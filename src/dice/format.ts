@@ -1,57 +1,108 @@
 import {ActionRowBuilder, ButtonBuilder, EmbedBuilder, User} from "discord.js";
 import {ButtonManager, EmbedManager, SimpleColor} from "@spatulox/simplediscordbot";
-import {formatTerm} from "./parser";
+import {DiceTerm, formatTerm} from "./parser";
 import {RollResult, TermResult} from "./roller";
-
-export const DEFAULT_ROLL_TITLE = "🎲 Lancer de dés";
 
 export const REROLL_PREFIX = "dice_reroll";
 const REROLL_SEPARATOR = "|";
 
-const FIELD_MAX_LENGTH = 1024;
+const DESCRIPTION_MAX_LENGTH = 4096;
 
 export type RerollPayload = {
     formula: string
     isPrivate: boolean
 };
 
-export function buildRollEmbed(result: RollResult, title: string, user: User): EmbedBuilder {
+type DiceTermResult = TermResult & {term: DiceTerm};
+
+export function buildRollEmbed(result: RollResult, user: User): EmbedBuilder {
     const color = result.critical === 'success' ? SimpleColor.green
         : result.critical === 'failure' ? SimpleColor.red
         : null;
 
-    const lines = [`# ${result.total}`, `\`${result.formula.normalized}\``];
+    return EmbedManager.create(color)
+        .setTitle(`🎲 ${result.formula.normalized}`)
+        .setAuthor({name: user.displayName, iconURL: user.displayAvatarURL()})
+        .setDescription(buildRollDescription(result));
+}
+
+/**
+ * The "game mat" : the dice that count (keep / drop rules applied), the dice total,
+ * the modifiers and the final total. When a keep / drop rule removed dice, a smaller
+ * mat below shows every die rolled and the total without those rules.
+ */
+export function buildRollDescription(result: RollResult): string {
+    const diceTerms = result.terms.filter(isDiceTerm);
+    const modifiers = result.terms.filter(term => term.term.kind === 'constant');
+    const width = Math.max(...diceTerms.map(term => `${term.term.sides}`.length));
+
+    const diceTotal = diceTerms.reduce((sum, term) => sum + term.subtotal, 0);
+    const modifiersTotal = modifiers.reduce((sum, term) => sum + term.subtotal, 0);
+
+    const lines = [
+        codeBlock(mat(diceTerms, width, true)),
+        `Total des dés : **${diceTotal}**`
+    ];
+    if (modifiers.length > 0) {
+        lines.push(`Modificateurs : **${signed(modifiersTotal)}**`);
+    }
+    lines.push(`# Total : ${result.total}`);
+
     if (result.critical === 'success') lines.push("✨ **Réussite critique !**");
     if (result.critical === 'failure') lines.push("💀 **Échec critique…**");
 
-    const embed = EmbedManager.create(color)
-        .setTitle(title)
-        .setAuthor({name: user.displayName, iconURL: user.displayAvatarURL()})
-        .setDescription(lines.join("\n"));
+    const main = lines.join("\n");
 
-    return EmbedManager.field(embed, {name: "Détail", value: formatDetails(result.terms)});
+    if (!diceTerms.some(term => term.term.keep)) {
+        return main;
+    }
+
+    const rawTotal = diceTerms.reduce((sum, term) => sum + term.term.sign * sumOf(term.dice.map(die => die.value)), modifiersTotal);
+    const miniMat = [
+        "-# Tous les dés, sans kh / kl / dh / dl :",
+        ...mat(diceTerms, width, false).map(line => `-# \`${line}\``),
+        `-# Total sans kh / kl / dh / dl : ${rawTotal}`
+    ].join("\n");
+
+    const full = `${main}\n\n${miniMat}`;
+    // Only reachable with huge formulas : the main mat matters more than the mini one
+    return full.length <= DESCRIPTION_MAX_LENGTH ? full : main;
 }
 
-function formatDetails(terms: TermResult[]): string {
-    const lines = terms.map((result, index) => {
-        const sign = result.term.sign === -1 ? "−" : index === 0 ? "" : "+";
-        const label = `${sign}${formatTerm(result.term)}`;
-
-        if (result.term.kind === 'constant') {
-            return `${label}`;
-        }
-
-        const dice = result.dice
-            .map(die => die.kept ? `${die.value}` : `~~${die.value}~~`)
-            .join(", ");
-        return `${label} → [${dice}] = **${Math.abs(result.subtotal)}**`;
+/**
+ * One line per dice term : label, then each die as [ n] separated by spaces.
+ * `applyKeep` = only the dice kept by kh / kl / dh / dl, with the term subtotal when it has several dice.
+ */
+function mat(terms: DiceTermResult[], width: number, applyKeep: boolean): string[] {
+    const labels = terms.map((result, index) => {
+        const {term} = result;
+        const sign = term.sign === -1 ? "-" : index === 0 ? "" : "+";
+        return sign + (applyKeep ? formatTerm(term) : `${term.count}d${term.sides}`);
     });
+    const labelWidth = Math.max(...labels.map(label => label.length));
 
-    return truncate(lines.join("\n"), FIELD_MAX_LENGTH);
+    return terms.map((result, index) => {
+        const values = result.dice.filter(die => !applyKeep || die.kept).map(die => die.value);
+        const dice = values.map(value => `[${`${value}`.padStart(width)}]`).join(" ");
+        const subtotal = applyKeep && values.length > 1 ? `  = ${sumOf(values)}` : "";
+        return `${labels[index]!.padEnd(labelWidth)}  ${dice}${subtotal}`;
+    });
 }
 
-function truncate(text: string, max: number): string {
-    return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+function codeBlock(lines: string[]): string {
+    return "```\n" + lines.join("\n") + "\n```";
+}
+
+function isDiceTerm(result: TermResult): result is DiceTermResult {
+    return result.term.kind === 'dice';
+}
+
+function sumOf(values: number[]): number {
+    return values.reduce((sum, value) => sum + value, 0);
+}
+
+function signed(value: number): string {
+    return value >= 0 ? `+${value}` : `${value}`;
 }
 
 export function buildRerollRow(formula: string, isPrivate: boolean): ActionRowBuilder<ButtonBuilder> {

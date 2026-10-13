@@ -18,7 +18,6 @@ const rateLimiter = new RateLimiter(5, RATE_LIMIT_WINDOW)
 export async function replyWithRoll(
     interaction: RepliableInteraction,
     input: string,
-    title: string,
     isPrivate: boolean
 ): Promise<void> {
     if (await isUserRateLimited(interaction, rateLimiter, RATE_LIMIT_WINDOW)) {
@@ -37,7 +36,7 @@ export async function replyWithRoll(
     }
 
     const result = rollFormula(formula)
-    const embed = buildRollEmbed(result, title, interaction.user)
+    const embed = buildRollEmbed(result, interaction.user)
 
     await interaction.reply({
         ...EmbedManager.toInteraction(embed, isPrivate),

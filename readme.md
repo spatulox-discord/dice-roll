@@ -27,6 +27,25 @@ Bot Discord de lancer de dés, basé sur
 | `2d20kh1` / `2d20kl1` | avantage / désavantage |
 | `4d6dl1` / `3d8dh1` | retire le plus bas / le plus haut (*drop lowest / highest*) |
 
+Le résultat affiche d'abord le **tapis de jeu** (les dés qui comptent, une ligne par terme), puis le total
+des dés, les modificateurs et le total final. Quand un `kh` / `kl` / `dh` / `dl` écarte des dés, un mini tapis
+en dessous montre tous les dés lancés et le total sans ces règles :
+
+````
+```
+2d20kh1  [15]
++1d4     [ 3]
+```
+Total des dés : 18
+Modificateurs : +3
+# Total : 21
+
+-# Tous les dés, sans kh / kl / dh / dl :
+-# 2d20  [15] [ 7]
+-# +1d4  [ 3]
+-# Total sans kh / kl / dh / dl : 28
+````
+
 - **`prive`** fait un lancer secret : seul toi vois le résultat.
 - Le bouton **🎲 Relancer** relance la même formule pour celui qui clique, avec la même visibilité.
 - Sur un d20 seul (y compris `2d20kh1`), un 20 naturel est une **réussite critique** et un 1 naturel un **échec critique**.
@@ -113,7 +132,7 @@ src/
   dice/
     parser.ts               formule → termes (+ limites et erreurs)
     roller.ts               tirage (crypto.randomInt), garder/retirer, critiques
-    format.ts               embed du résultat + bouton « Relancer »
+    format.ts               embed du résultat (tapis de jeu) + bouton « Relancer »
     reply.ts                parse + tire + répond (partagé par /roll et le bouton)
     *.test.ts               tests
   interactions/
