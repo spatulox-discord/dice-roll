@@ -2,11 +2,15 @@ import {describe, it} from "node:test";
 import assert from "node:assert/strict";
 import {parseFormula} from "./parser";
 import {rollFormula} from "./roller";
-import {buildRollDescription} from "./format";
+import {buildFilterField, buildRollDescription} from "./format";
+
+function rollWith(input: string, values: number[]) {
+    let index = 0;
+    return rollFormula(parseFormula(input), () => values[index++]!);
+}
 
 function describeRoll(input: string, ...values: number[]): string {
-    let index = 0;
-    return buildRollDescription(rollFormula(parseFormula(input), () => values[index++]!));
+    return buildRollDescription(rollWith(input, values));
 }
 
 describe("buildRollDescription", () => {
@@ -49,5 +53,29 @@ describe("buildRollDescription", () => {
     it("reports critical rolls", () => {
         assert.match(describeRoll("1d20", 20), /Réussite critique/);
         assert.match(describeRoll("2d20kl1", 20, 1), /Échec critique/);
+    });
+});
+
+describe("buildFilterField", () => {
+    it("is absent without keep / drop rules", () => {
+        assert.equal(buildFilterField(rollWith("3d6+2", [1, 2, 3])), null);
+    });
+
+    it("lists the dice kept by kh / kl", () => {
+        assert.equal(buildFilterField(rollWith("4d6kh3", [2, 6, 1, 5])), "`4d6kh3` garde les 3 plus hauts → `[2] [6] [5]`");
+        assert.equal(buildFilterField(rollWith("2d20kl1", [15, 7])), "`2d20kl1` garde le plus bas → `[7]`");
+    });
+
+    it("lists the dice removed by dh / dl", () => {
+        assert.equal(buildFilterField(rollWith("4d6dl1", [3, 1, 4, 6])), "`4d6dl1` retire le plus bas → `[1]`");
+        assert.equal(buildFilterField(rollWith("5d8dh2", [8, 2, 5, 7, 1])), "`5d8dh2` retire les 2 plus hauts → `[8] [7]`");
+    });
+
+    it("has one line per filtered term", () => {
+        const field = buildFilterField(rollWith("2d20kh1+1d4+4d6dl1", [3, 18, 2, 5, 1, 4, 6]));
+        assert.deepEqual(field?.split("\n"), [
+            "`2d20kh1` garde le plus haut → `[18]`",
+            "`4d6dl1` retire le plus bas → `[1]`"
+        ]);
     });
 });

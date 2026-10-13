@@ -1,12 +1,15 @@
 import {ActionRowBuilder, ButtonBuilder, EmbedBuilder, User} from "discord.js";
 import {ButtonManager, EmbedManager, SimpleColor} from "@spatulox/simplediscordbot";
-import {DiceTerm, formatTerm} from "./parser";
+import {DiceTerm, formatTerm, KeepRule} from "./parser";
 import {RollResult, TermResult} from "./roller";
 
 export const REROLL_PREFIX = "dice_reroll";
 const REROLL_SEPARATOR = "|";
 
 const DESCRIPTION_MAX_LENGTH = 4096;
+const FIELD_MAX_LENGTH = 1024;
+
+export const FILTER_FIELD_NAME = "Dés correspondant au filtre";
 
 export type RerollPayload = {
     formula: string
@@ -20,10 +23,43 @@ export function buildRollEmbed(result: RollResult, user: User): EmbedBuilder {
         : result.critical === 'failure' ? SimpleColor.red
         : null;
 
-    return EmbedManager.create(color)
+    const embed = EmbedManager.create(color)
         .setTitle(`🎲 ${result.formula.normalized}`)
         .setAuthor({name: user.displayName, iconURL: user.displayAvatarURL()})
         .setDescription(buildRollDescription(result));
+
+    const filter = buildFilterField(result);
+    return filter ? EmbedManager.field(embed, {name: FILTER_FIELD_NAME, value: filter}) : embed;
+}
+
+/**
+ * One line per term with a keep / drop rule : the rule in words and the dice it matched,
+ * i.e. the dice kept by kh / kl and the dice removed by dh / dl. Null when no term has a rule.
+ */
+export function buildFilterField(result: RollResult): string | null {
+    const lines = result.terms.filter(isDiceTerm).flatMap(({term, dice}) => {
+        if (!term.keep) {
+            return [];
+        }
+        const keeps = term.keep.mode === 'kh' || term.keep.mode === 'kl';
+        const matched = dice.filter(die => die.kept === keeps).map(die => `[${die.value}]`).join(" ");
+        return [`\`${formatTerm(term)}\` ${describeRule(term.keep)} → \`${matched}\``];
+    });
+
+    if (lines.length === 0) {
+        return null;
+    }
+    const value = lines.join("\n");
+    return value.length <= FIELD_MAX_LENGTH ? value : `${value.slice(0, FIELD_MAX_LENGTH - 1)}…`;
+}
+
+function describeRule({mode, count}: KeepRule): string {
+    const verb = mode === 'kh' || mode === 'kl' ? "garde" : "retire";
+    const high = mode === 'kh' || mode === 'dh';
+    if (count === 1) {
+        return `${verb} le plus ${high ? "haut" : "bas"}`;
+    }
+    return `${verb} les ${count} plus ${high ? "hauts" : "bas"}`;
 }
 
 /**

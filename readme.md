@@ -44,7 +44,13 @@ Modificateurs : +3
 -# 2d20  [15] [ 7]
 -# +1d4  [ 3]
 -# Total sans kh / kl / dh / dl : 28
+
+Dés correspondant au filtre
+2d20kh1 garde le plus haut → [15]
 ````
+
+Le champ **Dés correspondant au filtre** explique chaque règle et liste les dés qu'elle vise : les dés gardés
+pour `kh` / `kl`, les dés retirés pour `dh` / `dl`.
 
 - **`prive`** fait un lancer secret : seul toi vois le résultat.
 - Le bouton **🎲 Relancer** relance la même formule pour celui qui clique, avec la même visibilité.
