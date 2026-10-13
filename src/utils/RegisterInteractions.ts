@@ -1,7 +1,7 @@
 import {InteractionsManager} from "@spatulox/discord-module";
 import {Bot} from "@spatulox/simplediscordbot";
 import {Handlers} from "./HandlersPath";
-import {example} from "../interactions/commands/example";
+import {roll} from "../interactions/commands/roll";
 
 /**
  * Wires every interaction handler to its Discord name.
@@ -28,9 +28,9 @@ export class RegisterInteraction {
     }
 
     private async slash() {
-        const exampleJson = await Handlers.load('commands', 'example');
+        const rollJson = await Handlers.load('commands', 'roll');
 
-        this.manager.registerSlash(exampleJson.name, example)
+        this.manager.registerSlash(rollJson.name, roll)
     }
 
     private async button() {

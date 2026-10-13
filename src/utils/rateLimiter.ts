@@ -1,12 +1,12 @@
 import {RateLimiter} from "discord.js-rate-limiter"
-import {CommandInteraction, MessageFlags} from "discord.js"
+import {MessageFlags, RepliableInteraction} from "discord.js"
 
 /**
  * Replies (ephemerally) and returns true when the user is rate limited,
  * so a command can early-return on it.
  */
 export async function isUserRateLimited(
-    interaction: CommandInteraction,
+    interaction: RepliableInteraction,
     rateLimiter: RateLimiter,
     milliseconds: number
 ): Promise<boolean> {
@@ -15,7 +15,7 @@ export async function isUserRateLimited(
     }
 
     await interaction.reply({
-        content: `Command used too often, try again in ${milliseconds / 1000} seconds :)`,
+        content: `Doucement ! Réessaie dans ${milliseconds / 1000} secondes :)`,
         flags: MessageFlags.Ephemeral
     })
     return true

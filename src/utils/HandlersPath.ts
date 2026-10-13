@@ -6,7 +6,7 @@ import {BotEnv, FileManager} from "@spatulox/simplediscordbot";
  */
 const HANDLERS_PATHS: Record<HandlerCategory, readonly string[]> = {
     commands: [
-        'example'
+        'roll'
     ],
     context_menu: []
 } as const;
