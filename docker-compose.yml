@@ -1,0 +1,18 @@
+services:
+  dice-roll:
+    build:
+      context: .
+      # Uses the host network while building : avoids DNS failures of the build container during "npm ci"
+      network: host
+    image: dice-roll:latest
+    container_name: dice-roll
+    env_file: .env
+    environment:
+      TZ: Europe/Paris
+    # Restarts the bot when it crashes, and when Docker starts with the PC
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
