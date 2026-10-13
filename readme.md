@@ -46,7 +46,6 @@ Puis remplis `.env` :
 | Variable | Valeur |
 |---|---|
 | `DISCORD_BOT_TOKEN` | le token du bot ([Developer Portal](https://discord.com/developers/applications) → Bot) |
-| `DISCORD_BOT_CLIENTID` | l'Application ID, utilisé par `dim` |
 | `DISCORD_BOT_DEV` | `true` = commande `/roll_dev` (`handler/commands_dev/`), sinon `/roll` (`handler/commands/`) |
 | `DISCORD_INTERACTION_FOLDER` | `./handler` (à laisser) |
 
