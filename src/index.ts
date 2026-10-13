@@ -34,5 +34,10 @@ async function main() {
             Bot.log.error(`Failed to start the bot : ${error}`)
         }
     })
+
+    // The login gave up (no network yet at boot, bad token...) : exit so Docker restarts the bot
+    if (!await bot.started) {
+        process.exit(1)
+    }
 }
 main()
