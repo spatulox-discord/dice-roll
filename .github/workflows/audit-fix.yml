@@ -1,0 +1,99 @@
+name: Weekly audit fix
+
+# Dependabot version updates cover the direct dependencies declared in
+# package.json. This handles the rest: the lockfile-only bumps of transitive
+# packages that `npm audit fix` resolves (brace-expansion, minimatch, ws...).
+# It runs on both long-lived branches because their lockfiles differ.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # every Monday, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  audit-fix:
+    name: audit fix on ${{ matrix.branch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [main, feat/multi-bot]
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.branch }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.x'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Exits non-zero when vulnerabilities remain unfixable, which is not a
+      # failure here: we still want to ship whatever it did manage to fix.
+      - name: Run npm audit fix
+        run: npm audit fix || true
+
+      - name: Anything to commit?
+        id: diff
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            echo 'Nothing to fix, stopping here.'
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+            git --no-pager diff --stat -- package.json package-lock.json
+          fi
+
+      # A pull request opened with GITHUB_TOKEN does not trigger ci.yml, so the
+      # build has to happen here or the PR would land unverified.
+      - name: Typecheck
+        if: steps.diff.outputs.changed == 'true'
+        run: npx tsc --noEmit
+
+      - name: Build
+        if: steps.diff.outputs.changed == 'true'
+        run: npm run build
+
+      - name: Open a pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          slug="$(printf '%s' '${{ matrix.branch }}' | tr '/' '-')"
+          head="chore/audit-fix-${slug}"
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git checkout -b "$head"
+          git add package.json package-lock.json
+          git commit -m "chore(deps): npm audit fix on ${{ matrix.branch }}"
+
+          # Force push: the branch is reused week after week rather than
+          # piling up one stale branch per run.
+          git push --force origin "$head"
+
+          state="$(gh pr view "$head" --json state --jq .state 2>/dev/null || true)"
+          if [ "$state" = 'OPEN' ]; then
+            echo "PR already open for $head, it now points at the new commit."
+            exit 0
+          fi
+
+          gh pr create \
+            --base '${{ matrix.branch }}' \
+            --head "$head" \
+            --title "chore(deps): npm audit fix on ${{ matrix.branch }}" \
+            --body 'Automated `npm audit fix`. Lockfile-only transitive bumps.
+
+          Typecheck and build already passed inside the workflow run that opened
+          this PR — CI does not re-run on it, because pull requests created with
+          `GITHUB_TOKEN` do not trigger other workflows.'

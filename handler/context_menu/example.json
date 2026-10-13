@@ -1,0 +1,12 @@
+{
+  "name": "Example action",
+  "type": 3,
+  "dm_permission": false,
+  "integration_types": [
+    0
+  ],
+  "contexts": [
+    0
+  ],
+  "command_scope": "global"
+}

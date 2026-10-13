@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feat/multi-bot]
+  pull_request:
+    branches: [main, feat/multi-bot]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.x', '24.x']
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # Fails on its own if package.json and package-lock.json disagree
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      # The bot reads these at runtime, a typo would only show up in production
+      - name: Validate the handler json files
+        run: |
+          set -euo pipefail
+          found=0
+          while IFS= read -r file; do
+            found=$((found + 1))
+            node -e "JSON.parse(require('fs').readFileSync('$file', 'utf8'))" \
+              || { echo "::error file=$file::invalid JSON"; exit 1; }
+            node -e "
+              const j = JSON.parse(require('fs').readFileSync('$file', 'utf8'));
+              if (typeof j.name !== 'string' || !j.name) {
+                console.log('::error file=$file::missing \"name\" field');
+                process.exit(1);
+              }
+            "
+          done < <(find . -path ./node_modules -prune -o -path '*handler*' -name '*.json' -print)
+          echo "$found handler file(s) validated"
+          test "$found" -gt 0
+
+      # main builds dist/index.js, feat/multi-bot builds dist/bot_one/src/index.js:
+      # read the entry point from package.json so this stays branch agnostic
+      - name: Check the built entry point exists
+        run: |
+          set -euo pipefail
+          entry="$(node -p "require('./package.json').main")"
+          test -f "$entry" || { echo "::error::$entry was not produced by the build"; exit 1; }
+          echo "entry point ok: $entry"

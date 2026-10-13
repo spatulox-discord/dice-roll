@@ -1,0 +1,21 @@
+{
+  "name": "example",
+  "type": 1,
+  "description": "An example slash command",
+  "dm_permission": false,
+  "integration_types": [
+    0
+  ],
+  "contexts": [
+    0
+  ],
+  "command_scope": "global",
+  "options": [
+    {
+      "type": 3,
+      "name": "name",
+      "description": "The name to greet",
+      "required": false
+    }
+  ]
+}
