@@ -1,7 +1,9 @@
-import {InteractionsManager} from "@spatulox/discord-module";
+import {InteractionMatchType, InteractionsManager} from "@spatulox/discord-module";
 import {Bot} from "@spatulox/simplediscordbot";
 import {Handlers} from "./HandlersPath";
 import {roll} from "../interactions/commands/roll";
+import {reroll} from "../interactions/buttons/reroll";
+import {REROLL_PREFIX} from "../dice/format";
 
 /**
  * Wires every interaction handler to its Discord name.
@@ -34,7 +36,8 @@ export class RegisterInteraction {
     }
 
     private async button() {
-        // this.manager.registerButton("my_button_id", myButtonHandler)
+        // The customId carries the formula : "dice_reroll|<p|s>|<formula>"
+        this.manager.registerButton(REROLL_PREFIX, reroll, InteractionMatchType.START_WITH)
     }
 
     private async context_menu() {

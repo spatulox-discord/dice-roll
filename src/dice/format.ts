@@ -1,11 +1,19 @@
-import {EmbedBuilder, User} from "discord.js";
-import {EmbedManager, SimpleColor} from "@spatulox/simplediscordbot";
+import {ActionRowBuilder, ButtonBuilder, EmbedBuilder, User} from "discord.js";
+import {ButtonManager, EmbedManager, SimpleColor} from "@spatulox/simplediscordbot";
 import {formatTerm} from "./parser";
 import {RollResult, TermResult} from "./roller";
 
 export const DEFAULT_ROLL_TITLE = "🎲 Lancer de dés";
 
+export const REROLL_PREFIX = "dice_reroll";
+const REROLL_SEPARATOR = "|";
+
 const FIELD_MAX_LENGTH = 1024;
+
+export type RerollPayload = {
+    formula: string
+    isPrivate: boolean
+};
 
 export function rollTitle(reason: string | null): string {
     return reason ? `🎲 ${reason}` : DEFAULT_ROLL_TITLE;
@@ -48,4 +56,17 @@ function formatDetails(terms: TermResult[]): string {
 
 function truncate(text: string, max: number): string {
     return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+}
+
+export function buildRerollRow(formula: string, isPrivate: boolean): ActionRowBuilder<ButtonBuilder> {
+    const customId = [REROLL_PREFIX, isPrivate ? "p" : "s", formula].join(REROLL_SEPARATOR);
+    return ButtonManager.row(ButtonManager.secondary({customId, label: "Relancer", emoji: "🎲"}));
+}
+
+export function parseRerollId(customId: string): RerollPayload | null {
+    const [prefix, visibility, ...formula] = customId.split(REROLL_SEPARATOR);
+    if (prefix !== REROLL_PREFIX || (visibility !== "p" && visibility !== "s") || formula.length === 0) {
+        return null;
+    }
+    return {formula: formula.join(REROLL_SEPARATOR), isPrivate: visibility === "p"};
 }

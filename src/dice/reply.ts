@@ -5,14 +5,14 @@ import {Time} from "@spatulox/utils";
 import {isUserRateLimited} from "../utils/rateLimiter";
 import {DiceFormula, DiceParseError, parseFormula} from "./parser";
 import {rollFormula} from "./roller";
-import {buildRollEmbed} from "./format";
+import {buildRerollRow, buildRollEmbed} from "./format";
 
 // Shared by /roll and the reroll button : 5 rolls per 10 seconds per user
 const RATE_LIMIT_WINDOW = Time.second.SEC_10.toMilliseconds()
 const rateLimiter = new RateLimiter(5, RATE_LIMIT_WINDOW)
 
 /**
- * Parses, rolls and replies to the interaction with the result embed.
+ * Parses, rolls and replies to the interaction with the result embed and a reroll button.
  * An invalid formula gets an ephemeral error instead.
  */
 export async function replyWithRoll(
@@ -39,5 +39,8 @@ export async function replyWithRoll(
     const result = rollFormula(formula)
     const embed = buildRollEmbed(result, title, interaction.user)
 
-    await interaction.reply(EmbedManager.toInteraction(embed, isPrivate))
+    await interaction.reply({
+        ...EmbedManager.toInteraction(embed, isPrivate),
+        components: [buildRerollRow(formula.normalized, isPrivate)]
+    })
 }
