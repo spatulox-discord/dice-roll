@@ -8,9 +8,7 @@ const HANDLERS_PATHS: Record<HandlerCategory, readonly string[]> = {
     commands: [
         'example'
     ],
-    context_menu: [
-        'example'
-    ]
+    context_menu: []
 } as const;
 
 type HandlerKey = UnionFromArray<ConcatArrays<typeof HANDLERS_PATHS>>;
