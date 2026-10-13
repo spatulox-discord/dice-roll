@@ -1,0 +1,15 @@
+{
+  "name": "info_dev",
+  "type": 1,
+  "description": "Comment écrire une formule de dés (kh, kl, dh, dl…) et lire le résultat",
+  "integration_types": [
+    0,
+    1
+  ],
+  "contexts": [
+    0,
+    1,
+    2
+  ],
+  "command_scope": "global"
+}

@@ -2,6 +2,7 @@ import {InteractionMatchType, InteractionsManager} from "@spatulox/discord-modul
 import {Bot} from "@spatulox/simplediscordbot";
 import {Handlers} from "./HandlersPath";
 import {roll} from "../interactions/commands/roll";
+import {info} from "../interactions/commands/info";
 import {reroll} from "../interactions/buttons/reroll";
 import {REROLL_PREFIX} from "../dice/format";
 
@@ -33,6 +34,9 @@ export class RegisterInteraction {
         const rollJson = await Handlers.load('commands', 'roll');
 
         this.manager.registerSlash(rollJson.name, roll)
+
+        const infoJson = await Handlers.load('commands', 'info');
+        this.manager.registerSlash(infoJson.name, info)
     }
 
     private async button() {

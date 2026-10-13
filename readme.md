@@ -15,7 +15,10 @@ Bot Discord de lancer de dés, basé sur
 
 ```
 /roll formule:<formule> [prive:<vrai|faux>]
+/info
 ```
+
+`/info` affiche (en privé) le mode d'emploi : notation, `kh` / `kl` / `dh` / `dl`, lecture du résultat et limites.
 
 | Formule | Signification |
 |---|---|
@@ -81,7 +84,7 @@ Le bot n'utilise que l'intent `Guilds` : aucun intent privilégié à activer da
 npx dim
 ```
 
-**Manage Interactions** → **Command Manager** → **Global** → déploie `roll` (ou `roll_dev` si
+**Manage Interactions** → **Command Manager** → **Global** → déploie `roll` et `info` (ou `roll_dev` et `info_dev` si
 `DISCORD_BOT_DEV=true`). `dim` écrit l'ID attribué par Discord dans le JSON : commite-le, les mises à jour
 s'appuient dessus.
 
@@ -130,8 +133,8 @@ docker compose down          # arrêter
 
 ```
 handler/
-  commands/roll.json        /roll (prod), déployé par `dim`
-  commands_dev/roll.json    /roll_dev (dev)
+  commands/                 roll.json, info.json (prod), déployés par `dim`
+  commands_dev/             roll_dev, info_dev (dev)
 src/
   index.ts                  point d'entrée : crée le Bot et enregistre les interactions
   client.ts                 client discord.js (intent Guilds)
@@ -143,6 +146,7 @@ src/
     *.test.ts               tests
   interactions/
     commands/roll.ts        handler de /roll
+    commands/info.ts        handler de /info (mode d'emploi)
     buttons/reroll.ts       handler du bouton (customId `dice_reroll|<p|s>|<formule>`)
   utils/                    HandlersPath, RegisterInteractions, RegisterModules, rateLimiter
 Dockerfile

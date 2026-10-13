@@ -8,8 +8,8 @@ import {rollFormula} from "./roller";
 import {buildRerollRow, buildRollEmbed} from "./format";
 
 // Shared by /roll and the reroll button : 5 rolls per 10 seconds per user
-const RATE_LIMIT_WINDOW = Time.second.SEC_10.toMilliseconds()
-const rateLimiter = new RateLimiter(5, RATE_LIMIT_WINDOW)
+export const RATE_LIMIT = {rolls: 5, windowMs: Time.second.SEC_10.toMilliseconds()} as const
+const rateLimiter = new RateLimiter(RATE_LIMIT.rolls, RATE_LIMIT.windowMs)
 
 /**
  * Parses, rolls and replies to the interaction with the result embed and a reroll button.
@@ -20,7 +20,7 @@ export async function replyWithRoll(
     input: string,
     isPrivate: boolean
 ): Promise<void> {
-    if (await isUserRateLimited(interaction, rateLimiter, RATE_LIMIT_WINDOW)) {
+    if (await isUserRateLimited(interaction, rateLimiter, RATE_LIMIT.windowMs)) {
         return
     }
 
