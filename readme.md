@@ -14,7 +14,7 @@ Bot Discord de lancer de dés, basé sur
 ## Utilisation
 
 ```
-/roll formule:<formule> [raison:<texte>] [prive:<vrai|faux>]
+/roll formule:<formule> [prive:<vrai|faux>]
 ```
 
 | Formule | Signification |
@@ -27,9 +27,8 @@ Bot Discord de lancer de dés, basé sur
 | `2d20kh1` / `2d20kl1` | avantage / désavantage |
 | `4d6dl1` / `3d8dh1` | retire le plus bas / le plus haut (*drop lowest / highest*) |
 
-- **`raison`** devient le titre du résultat (ex. « 🎲 Attaque à l'épée »).
 - **`prive`** fait un lancer secret : seul toi vois le résultat.
-- Le bouton **🎲 Relancer** relance la même formule pour celui qui clique, avec la même raison et la même visibilité.
+- Le bouton **🎲 Relancer** relance la même formule pour celui qui clique, avec la même visibilité.
 - Sur un d20 seul (y compris `2d20kh1`), un 20 naturel est une **réussite critique** et un 1 naturel un **échec critique**.
 - Limites : 80 caractères, 100 dés par terme, 200 dés au total, de 2 à 1000 faces, 20 termes.
   Chaque utilisateur peut faire 5 lancers par tranche de 10 secondes.

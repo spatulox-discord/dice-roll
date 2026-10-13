@@ -15,10 +15,6 @@ export type RerollPayload = {
     isPrivate: boolean
 };
 
-export function rollTitle(reason: string | null): string {
-    return reason ? `🎲 ${reason}` : DEFAULT_ROLL_TITLE;
-}
-
 export function buildRollEmbed(result: RollResult, title: string, user: User): EmbedBuilder {
     const color = result.critical === 'success' ? SimpleColor.green
         : result.critical === 'failure' ? SimpleColor.red

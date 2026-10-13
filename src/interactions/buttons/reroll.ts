@@ -5,7 +5,7 @@ import {DEFAULT_ROLL_TITLE, parseRerollId} from "../../dice/format";
 
 /**
  * "Relancer" button under a roll : rolls the same formula again for whoever clicked,
- * keeping the title (reason) of the original roll and its visibility.
+ * keeping the title and the visibility of the original roll.
  */
 export async function reroll(interaction: ButtonInteraction) {
     try {
