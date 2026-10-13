@@ -33,6 +33,14 @@ describe("parseFormula", () => {
         assert.equal(parseFormula("3d8dh").normalized, "3d8dh1");
     });
 
+    it("parses face value filters", () => {
+        assert.deepEqual(parseFormula("5d6k<=3").terms[0], {kind: 'dice', sign: 1, count: 5, sides: 6, keep: {mode: 'k', operator: '<=', value: 3}});
+        for (const operator of ["<", "<=", ">", ">=", "="]) {
+            assert.equal(parseFormula(`4d6 k${operator} 3`).normalized, `4d6k${operator}3`);
+        }
+        assert.equal(parseFormula("6d6k>=5+2").normalized, "6d6k>=5+2");
+    });
+
     const invalid: [string, string][] = [
         ["", "empty"],
         ["   ", "only spaces"],
@@ -52,6 +60,11 @@ describe("parseFormula", () => {
         ["2d20kh0", "keeping zero dice"],
         ["2d20dl2", "dropping every die"],
         ["4d6k3", "unknown keep rule"],
+        ["4d6k<", "face value filter without a value"],
+        ["4d6k=>3", "unknown comparison operator"],
+        ["4d6k>6", "face value filter no face can match"],
+        ["4d6k<1", "face value filter below every face"],
+        ["4d6kh2k<3", "two filters on one term"],
         [`1d20+${LIMITS.maxConstant + 1}`, "constant too big"],
         ["1d6".padEnd(LIMITS.formulaLength + 1, "1"), "formula too long"]
     ];

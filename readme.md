@@ -18,7 +18,7 @@ Bot Discord de lancer de dés, basé sur
 /info
 ```
 
-`/info` affiche (en privé) le mode d'emploi : notation, `kh` / `kl` / `dh` / `dl`, lecture du résultat et limites.
+`/info` affiche (en privé) le mode d'emploi : notation, filtres (`kh` / `kl` / `dh` / `dl`, `k<=3`…), lecture du résultat et limites.
 
 | Formule | Signification |
 |---|---|
@@ -29,10 +29,15 @@ Bot Discord de lancer de dés, basé sur
 | `4d6kh3` | 4d6, garde les 3 plus hauts (*keep highest*) |
 | `2d20kh1` / `2d20kl1` | avantage / désavantage |
 | `4d6dl1` / `3d8dh1` | retire le plus bas / le plus haut (*drop lowest / highest*) |
+| `5d6k<=3` | garde tous les dés dont la face est ≤ 3 (aussi `<`, `>`, `>=`, `=`) |
+
+Après `kh` / `kl` / `dh` / `dl`, le nombre est un **nombre de dés** : `5d6kl3` garde les 3 dés les plus bas,
+même si l'un d'eux fait 4. Pour filtrer sur la **valeur de la face**, utilise `k` avec un comparateur :
+`5d6k<=3` garde tous les dés qui font 3 ou moins (aucun dé gardé = 0). Un seul filtre par groupe de dés.
 
 Le résultat affiche d'abord le **tapis de jeu** (les dés qui comptent, une ligne par terme), puis le total
-des dés, les modificateurs et le total final. Quand un `kh` / `kl` / `dh` / `dl` écarte des dés, un mini tapis
-en dessous montre tous les dés lancés et le total sans ces règles :
+des dés, les modificateurs et le total final. Quand un groupe de dés a un filtre, un mini tapis
+en dessous montre tous les dés lancés et le total sans filtre :
 
 ````
 ```
@@ -43,17 +48,17 @@ Total des dés : 18
 Modificateurs : +3
 # Total : 21
 
--# Tous les dés, sans kh / kl / dh / dl :
+-# Tous les dés, sans filtre :
 -# 2d20  [15] [ 7]
 -# +1d4  [ 3]
--# Total sans kh / kl / dh / dl : 28
+-# Total sans filtre : 28
 
 Dés correspondant au filtre
 2d20kh1 garde le plus haut → [15]
 ````
 
-Le champ **Dés correspondant au filtre** explique chaque règle et liste les dés qu'elle vise : les dés gardés
-pour `kh` / `kl`, les dés retirés pour `dh` / `dl`.
+Le champ **Dés correspondant au filtre** explique chaque filtre et liste les dés qu'il vise : les dés gardés
+pour `kh` / `kl` / `k<=…`, les dés retirés pour `dh` / `dl`.
 
 - **`prive`** fait un lancer secret : seul toi vois le résultat.
 - Le bouton **🎲 Relancer** relance la même formule pour celui qui clique, avec la même visibilité.

@@ -44,6 +44,22 @@ describe("rollFormula", () => {
         assert.equal(roll("3d8dh1", 8, 2, 5).total, 7);
     });
 
+    it("keeps the dice matching a face value filter", () => {
+        const result = roll("5d6k<=3", 6, 4, 5, 1, 3);
+        assert.equal(result.total, 4);
+        assert.deepEqual(result.terms[0]!.dice.map(die => die.kept), [false, false, false, true, true]);
+        assert.equal(roll("6d6k>=5", 5, 2, 6, 6, 1, 4).total, 17);
+        assert.equal(roll("4d6k<3", 1, 2, 3, 2).total, 5);
+        assert.equal(roll("4d6k>3", 1, 2, 3, 4).total, 4);
+        assert.equal(roll("3d6k=6", 6, 2, 6).total, 12);
+    });
+
+    it("totals 0 when a face value filter matches no die", () => {
+        const result = roll("2d6k>4+1", 1, 2);
+        assert.equal(result.total, 1);
+        assert.ok(result.terms[0]!.dice.every(die => !die.kept));
+    });
+
     it("breaks ties by roll order", () => {
         assert.deepEqual([...keptIndexes([5, 5, 5], {mode: 'kh', count: 2})], [0, 1]);
         assert.deepEqual([...keptIndexes([5, 5, 5], {mode: 'kl', count: 1})], [0]);

@@ -1,5 +1,5 @@
 import {randomInt} from "node:crypto";
-import {DiceFormula, DiceTerm, KeepRule, Term} from "./parser";
+import {DiceFormula, DiceTerm, KeepRule, matchesValue, Term} from "./parser";
 
 /** Returns a value between 1 and `sides` (both included) */
 export type Rng = (sides: number) => number;
@@ -55,6 +55,9 @@ export function keptIndexes(values: number[], keep: KeepRule | null): Set<number
     const all = values.map((_, index) => index);
     if (!keep) {
         return new Set(all);
+    }
+    if (keep.mode === 'k') {
+        return new Set(all.filter(index => matchesValue(values[index]!, keep)));
     }
 
     const ascending = [...all].sort((a, b) => values[a]! - values[b]! || a - b);

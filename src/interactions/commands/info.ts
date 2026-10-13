@@ -5,7 +5,7 @@ import {FILTER_FIELD_NAME} from "../../dice/format";
 import {RATE_LIMIT} from "../../dice/reply";
 
 /**
- * /info : how to write a formula (keep / drop rules included) and how to read a result.
+ * /info : how to write a formula (filters included) and how to read a result.
  * Ephemeral, so asking for help does not flood the channel.
  */
 export async function info(interaction: ChatInputCommandInteraction) {
@@ -33,9 +33,9 @@ export function buildInfoEmbed(): EmbedBuilder {
             ].join("\n")
         },
         {
-            name: "🎯 Garder ou retirer des dés",
+            name: "🎯 Filtrer par nombre de dés",
             value: [
-                "À coller juste après un groupe de dés, suivi du nombre de dés visés (1 par défaut) :",
+                "À coller juste après un groupe de dés. Le nombre qui suit est un **nombre de dés** (1 par défaut), pas une valeur de face :",
                 "`kh` *keep highest* : garde les plus hauts. `4d6kh3` garde les 3 meilleurs",
                 "`kl` *keep lowest* : garde les plus bas. `2d20kl1` garde le pire",
                 "`dh` *drop highest* : retire les plus hauts. `3d8dh1` retire le meilleur",
@@ -44,12 +44,22 @@ export function buildInfoEmbed(): EmbedBuilder {
             ].join("\n")
         },
         {
+            name: "🔎 Filtrer par valeur de face",
+            value: [
+                "`k` suivi d'un comparateur garde **tous** les dés dont la face correspond, quel que soit leur nombre :",
+                "`5d6k<=3` : garde les dés qui font 3 ou moins",
+                "`6d6k>=5` : garde les 5 et les 6",
+                "Comparateurs : `<` `<=` `>` `>=` `=`. Si aucun dé ne correspond, le groupe vaut 0",
+                "Un seul filtre par groupe de dés"
+            ].join("\n")
+        },
+        {
             name: "📊 Lire le résultat",
             value: [
                 "**Tapis de jeu** : les dés qui comptent, une ligne par groupe de dés",
                 "**Total des dés**, puis les **modificateurs** et le **total** final",
-                "Avec `kh` / `kl` / `dh` / `dl` : un mini tapis montre tous les dés lancés et le total sans filtre,",
-                `et le champ **${FILTER_FIELD_NAME}** liste les dés gardés (\`kh\`/\`kl\`) ou retirés (\`dh\`/\`dl\`)`,
+                "Avec un filtre : un mini tapis montre tous les dés lancés et le total sans filtre,",
+                `et le champ **${FILTER_FIELD_NAME}** liste les dés gardés (\`kh\`/\`kl\`/\`k<=…\`) ou retirés (\`dh\`/\`dl\`)`,
                 "Sur un d20 seul (`1d20+5`, `2d20kh1`…) : 20 naturel = ✨ **réussite critique**, 1 naturel = 💀 **échec critique**"
             ].join("\n")
         },

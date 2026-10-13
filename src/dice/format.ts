@@ -1,6 +1,6 @@
 import {ActionRowBuilder, ButtonBuilder, EmbedBuilder, User} from "discord.js";
 import {ButtonManager, EmbedManager, SimpleColor} from "@spatulox/simplediscordbot";
-import {DiceTerm, formatTerm, KeepRule} from "./parser";
+import {CompareOperator, DiceTerm, formatTerm, KeepRule} from "./parser";
 import {RollResult, TermResult} from "./roller";
 
 export const REROLL_PREFIX = "dice_reroll";
@@ -33,17 +33,19 @@ export function buildRollEmbed(result: RollResult, user: User): EmbedBuilder {
 }
 
 /**
- * One line per term with a keep / drop rule : the rule in words and the dice it matched,
- * i.e. the dice kept by kh / kl and the dice removed by dh / dl. Null when no term has a rule.
+ * One line per term with a filter : the rule in words and the dice it matched,
+ * i.e. the dice kept by kh / kl / k<op>, and the dice removed by dh / dl. Null when no term has a filter.
  */
 export function buildFilterField(result: RollResult): string | null {
     const lines = result.terms.filter(isDiceTerm).flatMap(({term, dice}) => {
         if (!term.keep) {
             return [];
         }
-        const keeps = term.keep.mode === 'kh' || term.keep.mode === 'kl';
+        const keeps = term.keep.mode !== 'dh' && term.keep.mode !== 'dl';
         const matched = dice.filter(die => die.kept === keeps).map(die => `[${die.value}]`).join(" ");
-        return [`\`${formatTerm(term)}\` ${describeRule(term.keep)} → \`${matched}\``];
+        // A face value filter can match no die at all
+        const shown = matched ? `\`${matched}\`` : "aucun dé";
+        return [`\`${formatTerm(term)}\` ${describeRule(term.keep)} → ${shown}`];
     });
 
     if (lines.length === 0) {
@@ -53,7 +55,13 @@ export function buildFilterField(result: RollResult): string | null {
     return value.length <= FIELD_MAX_LENGTH ? value : `${value.slice(0, FIELD_MAX_LENGTH - 1)}…`;
 }
 
-function describeRule({mode, count}: KeepRule): string {
+const OPERATOR_SYMBOLS: Record<CompareOperator, string> = {'<': "<", '<=': "≤", '>': ">", '>=': "≥", '=': "="};
+
+function describeRule(rule: KeepRule): string {
+    if (rule.mode === 'k') {
+        return `garde les dés ${OPERATOR_SYMBOLS[rule.operator]} ${rule.value}`;
+    }
+    const {mode, count} = rule;
     const verb = mode === 'kh' || mode === 'kl' ? "garde" : "retire";
     const high = mode === 'kh' || mode === 'dh';
     if (count === 1) {
@@ -63,9 +71,9 @@ function describeRule({mode, count}: KeepRule): string {
 }
 
 /**
- * The "game mat" : the dice that count (keep / drop rules applied), the dice total,
- * the modifiers and the final total. When a keep / drop rule removed dice, a smaller
- * mat below shows every die rolled and the total without those rules.
+ * The "game mat" : the dice that count (filters applied), the dice total,
+ * the modifiers and the final total. When a term has a filter, a smaller
+ * mat below shows every die rolled and the total without filters.
  */
 export function buildRollDescription(result: RollResult): string {
     const diceTerms = result.terms.filter(isDiceTerm);
@@ -95,9 +103,9 @@ export function buildRollDescription(result: RollResult): string {
 
     const rawTotal = diceTerms.reduce((sum, term) => sum + term.term.sign * sumOf(term.dice.map(die => die.value)), modifiersTotal);
     const miniMat = [
-        "-# Tous les dés, sans kh / kl / dh / dl :",
+        "-# Tous les dés, sans filtre :",
         ...mat(diceTerms, width, false).map(line => `-# \`${line}\``),
-        `-# Total sans kh / kl / dh / dl : ${rawTotal}`
+        `-# Total sans filtre : ${rawTotal}`
     ].join("\n");
 
     const full = `${main}\n\n${miniMat}`;
@@ -107,7 +115,7 @@ export function buildRollDescription(result: RollResult): string {
 
 /**
  * One line per dice term : label, then each die as [ n] separated by spaces.
- * `applyKeep` = only the dice kept by kh / kl / dh / dl, with the term subtotal when it has several dice.
+ * `applyKeep` = only the dice kept by the filters, with the term subtotal when it has several dice.
  */
 function mat(terms: DiceTermResult[], width: number, applyKeep: boolean): string[] {
     const labels = terms.map((result, index) => {
@@ -119,7 +127,7 @@ function mat(terms: DiceTermResult[], width: number, applyKeep: boolean): string
 
     return terms.map((result, index) => {
         const values = result.dice.filter(die => !applyKeep || die.kept).map(die => die.value);
-        const dice = values.map(value => `[${`${value}`.padStart(width)}]`).join(" ");
+        const dice = values.map(value => `[${`${value}`.padStart(width)}]`).join(" ") || "aucun dé";
         const subtotal = applyKeep && values.length > 1 ? `  = ${sumOf(values)}` : "";
         return `${labels[index]!.padEnd(labelWidth)}  ${dice}${subtotal}`;
     });
