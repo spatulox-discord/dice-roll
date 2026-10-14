@@ -47,7 +47,7 @@ export const INFO_PAGES: readonly InfoPage[] = [
             "**Count successes**: a comparison (`<` `<=` `>` `>=` `=`) and a **face value**",
             "`4d6<=3`: counts the dice showing 3 or less (roll under)",
             "`6d10>=8`: counts the dice showing 8 or more (dice pools)",
-            "The group is worth the **number of successes**, the total of their faces is shown too (`total = …`)",
+            "The group is worth the **number of successes**. Under the table: the **faces total** of all its dice and the **successes faces total**",
             "Modifiers add to the successes: `6d10>=8+1`"
         ]
     },

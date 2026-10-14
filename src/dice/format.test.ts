@@ -3,7 +3,15 @@ import assert from "node:assert/strict";
 import {ComponentType} from "discord.js";
 import {parseFormula} from "./parser";
 import {RollResult, rollFormula} from "./roller";
-import {buildFiltersText, buildRollContainer, buildRollTable, buildTargetText, FILTER_FIELD_NAME, TEXT_MAX_LENGTH} from "./format";
+import {
+    buildFacesTotalsText,
+    buildFiltersText,
+    buildRollContainer,
+    buildRollTable,
+    buildTargetText,
+    FILTER_FIELD_NAME,
+    TEXT_MAX_LENGTH
+} from "./format";
 import {containerTexts, fakeUser} from "../test/components";
 
 function rollWith(input: string, values: number[]) {
@@ -53,8 +61,8 @@ describe("buildRollTable", () => {
 
     it("shows the successes with the total of their faces", () => {
         const lines = table("4d6<=3", 1, 5, 3, 2).split("\n");
-        assert.equal(lines[3], "║   rolls   │   successes   ║");
-        assert.equal(lines[5], "║ 1 (5) 3 2 │ [3] total = 6 ║");
+        assert.equal(lines[3], "║   rolls   │ successes ║");
+        assert.equal(lines[5], "║ 1 (5) 3 2 │    [3]    ║");
     });
 
     it("titles the sum column result when sums and successes are mixed", () => {
@@ -81,6 +89,26 @@ describe("buildRollTable", () => {
 
     it("can hide the rolls", () => {
         assert.match(buildRollTable(rollWith("5d6", [1, 2, 4, 2, 4]), true), /║ … +│ \[13\] ║/);
+    });
+});
+
+describe("buildFacesTotalsText", () => {
+    it("is absent without success count", () => {
+        assert.equal(buildFacesTotalsText(rollWith("4d6kh3+2", [2, 6, 1, 5])), null);
+    });
+
+    it("gives the total of every face and of the faces of the successes", () => {
+        assert.equal(buildFacesTotalsText(rollWith("4d6<=3", [1, 5, 3, 2])),
+            "`4d6<=3` faces total: **11** · successes faces total: **6**");
+        assert.equal(buildFacesTotalsText(rollWith("2d6>4", [1, 2])),
+            "`2d6>4` faces total: **3** · successes faces total: **0**");
+    });
+
+    it("has one line per success count", () => {
+        assert.deepEqual(buildFacesTotalsText(rollWith("4d6<=3+1d20+2d10>=8", [1, 5, 3, 2, 12, 9, 3]))?.split("\n"), [
+            "`4d6<=3` faces total: **11** · successes faces total: **6**",
+            "`2d10>=8` faces total: **12** · successes faces total: **9**"
+        ]);
     });
 });
 
@@ -117,8 +145,8 @@ describe("buildFiltersText", () => {
 
     it("gives the successes and the total of their faces", () => {
         assert.equal(buildFiltersText(rollWith("4d6<=3", [1, 5, 3, 2])),
-            "`4d6<=3` counts dice ≤ 3 as successes: 3 successes (total = 6)\n-# (n) = not counted");
-        assert.match(buildFiltersText(rollWith("2d6=6", [6, 1]))!, /: 1 success \(total = 6\)/);
+            "`4d6<=3` counts dice ≤ 3 as successes: 3 successes\n-# (n) = not counted");
+        assert.match(buildFiltersText(rollWith("2d6=6", [6, 1]))!, /: 1 success$/m);
     });
 });
 
@@ -143,6 +171,14 @@ describe("buildRollContainer", () => {
         assert.equal(button && "custom_id" in button ? button.custom_id : null, "dice_reroll|s|2d20kh1");
     });
 
+    it("puts the faces totals right under the table, outside the code block", () => {
+        const {texts} = build(rollWith("4d6<=3 vs 2", [1, 5, 3, 2]));
+        assert.ok(texts[1]!.startsWith("```\n╔"));
+        assert.doesNotMatch(texts[1]!, /faces total/);
+        assert.equal(texts[2], "`4d6<=3` faces total: **11** · successes faces total: **6**");
+        assert.equal(texts[3], "### ✅ Success: 3 ≥ 2");
+    });
+
     it("puts the success / failure right under the table", () => {
         const {texts} = build(rollWith("2d6+3 vs 8", [4, 4]));
         assert.ok(texts[1]!.startsWith("```\n╔"));
@@ -158,22 +194,13 @@ describe("buildRollContainer", () => {
         assert.match(build(rollWith("1d20", [3]), true).json, /dice_reroll\|p\|1d20/);
     });
 
-    it("hides the rolls, not the sums, when they do not fit in Discord's text limit", () => {
-        // 200 dice showing 1000, almost all between parentheses : the biggest table the limits allow
-        const result = rollWith("100d1000kh1+100d1000<2", Array.from({length: 200}, () => 1000));
-        assert.ok(buildRollTable(result).length > TEXT_MAX_LENGTH, "the full table must not fit");
-
+    it("shows every die of the biggest roll the limits allow, within Discord's text limit", () => {
+        // 200 dice showing 1000, almost all between parentheses, negative sums : the widest table possible
+        const result = rollWith("-100d1000kh1-100d1000kh1", Array.from({length: 200}, () => 1000));
         const {texts} = build(result);
         const total = texts.reduce((sum, text) => sum + text.length, 0);
+
         assert.ok(total <= TEXT_MAX_LENGTH, `${total} characters`);
-
-        const tableText = texts.find(text => text.startsWith("```\n╔"));
-        assert.ok(tableText, "the table must always be there");
-        assert.match(tableText, /│ … +│ +\[1000\] +║/);
-    });
-
-    it("keeps every die when the table fits", () => {
-        const result = rollWith("100d999kh1+100d999<2", Array.from({length: 200}, () => 999));
-        assert.doesNotMatch(build(result).json, /│ … /);
+        assert.doesNotMatch(texts.join("\n"), /│ … /, "no die is hidden");
     });
 });

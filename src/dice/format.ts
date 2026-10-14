@@ -27,23 +27,27 @@ type DiceTermResult = TermResult & {term: DiceTerm};
  * The roll as a Components V2 container :
  * - who rolled, in small text
  * - the table of the roll (see buildRollTable)
+ * - the faces totals of the success counts, only when a term counts successes
  * - success / failure, only with a `vs` target
  * - the "Filters" list, only when a term has a filter
  * - the "Reroll" button
  */
 export function buildRollContainer(result: RollResult, user: User, isPrivate: boolean): ContainerBuilder {
     const rolledBy = `-# 🎲 Rolled by **${escapeMarkdown(user.displayName)}**`;
+    const facesTotals = buildFacesTotalsText(result);
     const outcome = buildTargetText(result);
     const filters = buildFiltersText(result);
 
     // Every die is listed in the table : on huge rolls, only the sums fit in Discord's text limit
-    const fixedLength = rolledBy.length + (outcome?.length ?? 0) + (filters ? FILTER_FIELD_NAME.length + 6 + filters.length : 0);
+    const fixedLength = rolledBy.length + (facesTotals?.length ?? 0) + (outcome?.length ?? 0)
+        + (filters ? FILTER_FIELD_NAME.length + 6 + filters.length : 0);
     let table = codeBlock(buildRollTable(result));
     if (fixedLength + table.length > TEXT_MAX_LENGTH) {
         table = codeBlock(buildRollTable(result, true));
     }
 
     const fields: ComponentManagerField[] = [{value: table, separator: false}];
+    if (facesTotals) fields.push({value: facesTotals, separator: false});
     if (outcome) fields.push({value: outcome, separator: false});
     if (filters) fields.push({name: FILTER_FIELD_NAME, value: filters, separator: false});
     fields.push({button: [buildRerollButton(result.formula.normalized, isPrivate)]});
@@ -86,9 +90,7 @@ export function buildRollTable(result: RollResult, hideRolls = false): string {
     const rows: TableRow[] = diceTerms.map((term, index) => ({
         dice: diceLabel(term, index),
         rolls: hideRolls ? [HIDDEN_ROLLS] : wrap(term.dice.map(die => die.kept ? `${die.value}` : `(${die.value})`)),
-        sum: term.term.filter?.type === 'success'
-            ? `[${term.subtotal}] total = ${term.term.sign * term.faceTotal}`
-            : `[${term.subtotal}]`
+        sum: `[${term.subtotal}]`
     }));
     if (modifiers.length > 0) {
         rows.push({dice: "mod", rolls: [withDiceColumn ? "" : "mod"], sum: signed(sumOf(modifiers.map(term => term.subtotal)))});
@@ -166,11 +168,25 @@ export function buildTargetText(result: RollResult): string | null {
 }
 
 /**
+ * For each term counting successes, under the table : the total of all its faces and the total of the faces
+ * of its successes, e.g. "`4d6<=3` faces total: **11** · successes faces total: **6**". Null without success count.
+ */
+export function buildFacesTotalsText(result: RollResult): string | null {
+    const lines = result.terms.filter(isDiceTerm)
+        .filter(({term}) => term.filter?.type === 'success')
+        .map(({term, dice, faceTotal}) => {
+            const allFaces = sumOf(dice.map(die => die.value));
+            return `\`${formatTerm(term)}\` faces total: **${allFaces}** · successes faces total: **${faceTotal}**`;
+        });
+    return lines.length > 0 ? lines.join("\n") : null;
+}
+
+/**
  * One line per term with a filter, in words, then the legend of the parentheses.
  * Null when no term has a filter.
  */
 export function buildFiltersText(result: RollResult): string | null {
-    const lines = result.terms.filter(isDiceTerm).flatMap(({term, subtotal, faceTotal}) => {
+    const lines = result.terms.filter(isDiceTerm).flatMap(({term, subtotal}) => {
         if (!term.filter) {
             return [];
         }
@@ -179,7 +195,7 @@ export function buildFiltersText(result: RollResult): string | null {
             return [description];
         }
         const successes = Math.abs(subtotal);
-        return [`${description}: ${successes} success${successes === 1 ? "" : "es"} (total = ${faceTotal})`];
+        return [`${description}: ${successes} success${successes === 1 ? "" : "es"}`];
     });
 
     return lines.length > 0 ? [...lines, FILTER_LEGEND].join("\n") : null;

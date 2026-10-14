@@ -104,7 +104,8 @@ See [With Docker (manual start)](#with-docker-manual-start) for details.
 
 - After `kh` / `kl` / `dh` / `dl`, the number is a **number of dice** (1 by default: `2d20kh` = `2d20kh1`).
 - After a comparison (`<`, `<=`, `>`, `>=`, `=`), the number is a **face value**: the group is worth the
-  **number of successes**, and the total of their faces is shown too. Modifiers add to the successes
+  **number of successes**. The **faces total** of all its dice and the **successes faces total** are shown under
+  the table. Modifiers add to the successes
   (`6d10>=8+1`). If no die succeeds, the group is worth 0.
 - One filter (keep or count) per group of dice.
 - `vs` compares the **total** with a target and shows ✅ Success or ❌ Failure under the table. It goes at the end
@@ -138,7 +139,9 @@ Filters
 - One row per group of dice: its rolls and its sum. A `dice` column is added when there are several groups,
   a `mod` row for the modifiers, and a `total` row when there is more than one row.
 - Dice that do not count (dropped by `kh`/`kl`/`dh`/`dl`, or failed in a success count) are between parentheses.
-- For a success count, the sum column shows the number of successes and the total of their faces: `[3] total = 6`.
+- For a success count, the sum column shows the number of successes (`[3]`). Under the table, outside the code block,
+  a line gives the **faces total** of all its dice and the **successes faces total**:
+  `` `4d6<=3` faces total: 11 · successes faces total: 6 ``.
 - Long rolls wrap over several lines. On huge rolls that do not fit in a Discord message, the rolls are replaced
   with `…` and the sums stay.
 - **`private`** makes a secret roll: only you see the result.
