@@ -207,4 +207,14 @@ describe("buildRollContainer", () => {
         assert.ok(total <= TEXT_MAX_LENGTH, `${total} characters`);
         assert.doesNotMatch(texts.join("\n"), /│ … /, "no die is hidden");
     });
+
+    it("hides the dice when the filters and a long escaped name push past Discord's text limit", () => {
+        // Found by fuzzing : 4002 characters when the filters header was under-estimated
+        const formula = "50d1000dh1+2d999dh1-1d100>=1-d100<=999+2d2=1-d999=1-99d%<=999";
+        const user = {...fakeUser, displayName: "_*".repeat(16)} as typeof fakeUser;
+        const texts = containerTexts(buildRollContainer(rollFormula(parseFormula(formula), sides => sides), user, false));
+        const total = texts.reduce((sum, text) => sum + text.length, 0);
+
+        assert.ok(total <= TEXT_MAX_LENGTH, `${total} characters`);
+    });
 });

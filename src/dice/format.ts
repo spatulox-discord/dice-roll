@@ -33,18 +33,20 @@ type DiceTermResult = TermResult & {term: DiceTerm};
  * - the "Reroll" button
  */
 export function buildRollContainer(result: RollResult, user: User, isPrivate: boolean): ContainerBuilder {
+    // Every die is listed in the table : on huge rolls, only the sums fit in Discord's text limit
+    const container = assembleRollContainer(result, user, isPrivate, false);
+    if (containerTextLength(container) <= TEXT_MAX_LENGTH) {
+        return container;
+    }
+    return assembleRollContainer(result, user, isPrivate, true);
+}
+
+function assembleRollContainer(result: RollResult, user: User, isPrivate: boolean, hideDice: boolean): ContainerBuilder {
     const rolledBy = `-# 🎲 Rolled by **${escapeMarkdown(user.displayName)}**`;
     const facesTotals = buildFacesTotalsText(result);
     const outcome = buildTargetText(result);
     const filters = buildFiltersText(result);
-
-    // Every die is listed in the table : on huge rolls, only the sums fit in Discord's text limit
-    const fixedLength = rolledBy.length + (facesTotals?.length ?? 0) + (outcome?.length ?? 0)
-        + (filters ? FILTER_FIELD_NAME.length + 6 + filters.length : 0);
-    let table = codeBlock(buildRollTable(result));
-    if (fixedLength + table.length > TEXT_MAX_LENGTH) {
-        table = codeBlock(buildRollTable(result, true));
-    }
+    const table = codeBlock(buildRollTable(result, hideDice));
 
     const fields: ComponentManagerField[] = [{value: table, separator: false}];
     if (facesTotals) fields.push({value: facesTotals, separator: false});
@@ -53,6 +55,26 @@ export function buildRollContainer(result: RollResult, user: User, isPrivate: bo
     fields.push({button: [buildRerollButton(result.formula.normalized, isPrivate)]});
 
     return ComponentManager.fields(ComponentManager.create({description: rolledBy}), fields);
+}
+
+/** Every text displayed by a Components V2 container (Discord caps their sum at TEXT_MAX_LENGTH) */
+export function containerTexts(container: ContainerBuilder): string[] {
+    const texts: string[] = [];
+    const visit = (node: unknown) => {
+        if (Array.isArray(node)) {
+            node.forEach(visit);
+        } else if (node && typeof node === "object") {
+            const record = node as Record<string, unknown>;
+            if (typeof record.content === "string") texts.push(record.content);
+            Object.values(record).forEach(visit);
+        }
+    };
+    visit(container.toJSON());
+    return texts;
+}
+
+function containerTextLength(container: ContainerBuilder): number {
+    return containerTexts(container).reduce((sum, text) => sum + text.length, 0);
 }
 
 /** Ephemeral error answer (invalid formula, stale button...) */
