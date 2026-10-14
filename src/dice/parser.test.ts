@@ -112,6 +112,11 @@ describe("parseFormula", () => {
         });
     }
 
+    it("keeps the raw input of an error inside its code span", () => {
+        assert.throws(() => parseFormula("1d20+`@x`"), {message: /near `\+'@x'`\./});
+        assert.throws(() => parseFormula("1d20 vs `8"), {message: /target `vs'8`\./});
+    });
+
     it("explains why a drop rule is rejected", () => {
         assert.throws(() => parseFormula("4d6dh0"), /drop at least 1 die/);
         assert.throws(() => parseFormula("4d6dl4"), /cannot drop every die/);

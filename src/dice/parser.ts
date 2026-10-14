@@ -88,7 +88,7 @@ export function parseFormula(input: string): DiceFormula {
     // Removing the spaces would silently merge "1d20 5" into "1d205"
     const splitNumber = /\S*\d\s+\d\S*/.exec(input);
     if (splitNumber) {
-        throw new DiceParseError(`A space separates two numbers in \`${splitNumber[0]}\` : add a \`+\` or a \`-\`, or remove the space.`);
+        throw new DiceParseError(`A space separates two numbers in ${quote(splitNumber[0])} : add a \`+\` or a \`-\`, or remove the space.`);
     }
 
     const compact = input.replace(/\s+/g, '').toLowerCase();
@@ -117,7 +117,7 @@ export function parseFormula(input: string): DiceFormula {
         const match = TERM_REGEX.exec(formula);
 
         if (!match) {
-            throw new DiceParseError(`Invalid formula near \`${formula.slice(start)}\`. Example: \`2d20+3\`, \`4d6kh3\`.`);
+            throw new DiceParseError(`Invalid formula near ${quote(formula.slice(start))}. Example: \`2d20+3\`, \`4d6kh3\`.`);
         }
 
         const [, signChar, countStr, sidesStr, keepMode, keepCountStr, operator, operatorValue, constantStr] = match;
@@ -197,10 +197,15 @@ export function parseFormula(input: string): DiceFormula {
     return {terms, target, normalized};
 }
 
+/** Raw user input as inline code : a backtick in it would close the code span */
+function quote(text: string): string {
+    return `\`${text.replaceAll('`', "'")}\``;
+}
+
 function parseTarget(text: string): Comparison {
     const match = TARGET_REGEX.exec(text);
     if (!match) {
-        throw new DiceParseError(`Invalid target \`${text}\`. Example: \`2d6+3 vs 8\`, \`1d100 vs <=45\`.`);
+        throw new DiceParseError(`Invalid target ${quote(text)}. Example: \`2d6+3 vs 8\`, \`1d100 vs <=45\`.`);
     }
     const value = parseInt(match[2]!, 10);
     if (Math.abs(value) > LIMITS.maxTarget) {
