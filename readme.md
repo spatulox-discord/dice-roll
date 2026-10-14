@@ -34,16 +34,11 @@ cd dice-roll
 cp .env.example .env
 ```
 
-Then edit `.env`:
+Then put your token in `.env`, that's the only required value:
 
 ```dotenv
 DISCORD_BOT_TOKEN=the-token-from-step-0
-DISCORD_BOT_DEV=false
-DISCORD_INTERACTION_FOLDER=./handler
 ```
-
-`DISCORD_BOT_DEV=false` gives you `/roll` and `/info`. With `true`, the bot uses `/roll_dev` and `/info_dev`
-instead (see [Setup](#setup)).
 
 ### Step 2: Deploy the commands (once)
 
@@ -137,8 +132,9 @@ Then fill in `.env`:
 | Variable | Value |
 |---|---|
 | `DISCORD_BOT_TOKEN` | the bot token ([Developer Portal](https://discord.com/developers/applications) → Bot) |
-| `DISCORD_BOT_DEV` | `true` = `/roll_dev` and `/info_dev` (`handler/commands_dev/`), otherwise `/roll` and `/info` (`handler/commands/`) |
-| `DISCORD_INTERACTION_FOLDER` | `./handler` (leave as is) |
+| `DISCORD_BOT_DEV` | optional: `true` = `/roll_dev` and `/info_dev` (`handlers/commands_dev/`). Absent = `/roll` and `/info` (`handlers/commands/`) |
+
+The command files live in `handlers/`, the default folder of `dim`: no `DISCORD_INTERACTION_FOLDER` needed.
 
 The bot only uses the `Guilds` intent: no privileged intent to enable in the portal.
 
@@ -164,7 +160,7 @@ npm start       # build, then run dist/
 npm test        # parser, dice engine and message tests (node:test)
 ```
 
-> Always run from the repository root: `.env` and `handler/` are resolved from the current directory.
+> Always run from the repository root: `.env` and `handlers/` are resolved from the current directory.
 
 ### With Docker (starts with the machine)
 
@@ -194,7 +190,7 @@ docker compose down          # stop
 ## Layout
 
 ```
-handler/
+handlers/
   commands/                 roll.json, info.json (prod), deployed by `dim`
   commands_dev/             roll_dev, info_dev (dev)
 src/

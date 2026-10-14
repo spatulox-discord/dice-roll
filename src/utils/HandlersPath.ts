@@ -1,7 +1,7 @@
 import {BotEnv, FileManager} from "@spatulox/simplediscordbot";
 
 /**
- * Every handler json file available under handler/<category>/.
+ * Every handler json file available under handlers/<category>/.
  * Add an entry here when you add a new json file, otherwise load() throws.
  */
 const HANDLERS_PATHS: Record<HandlerCategory, readonly string[]> = {
@@ -54,7 +54,7 @@ export class Handlers {
             throw new Error(`Handler ${category}.${handler} not found in HANDLERS_PATHS var, plz update HANDLERS_PATHS`);
         }
 
-        const path = `./handler/${category}${this.path}/${handler}.json`;
+        const path = `./handlers/${category}${this.path}/${handler}.json`;
 
         try {
             const data = await FileManager.readJsonFile(path)
