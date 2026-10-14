@@ -81,7 +81,8 @@ See [With Docker (manual start)](#with-docker-manual-start) for details.
 /info
 ```
 
-`/info` shows (privately) how to use the bot: notation, filters, how to read a result, and the limits.
+`/info` shows (privately) how to use the bot, with a button per topic: **Roll a dice**, **Filters**, **Target**,
+**Result**, **Reroll** and **Limits**. The buttons switch the page in place.
 
 | Formula | Meaning |
 |---|---|
@@ -243,8 +244,9 @@ src/
   test/components.ts        test helpers for Components V2
   interactions/
     commands/roll.ts        /roll handler
-    commands/info.ts        /info handler (how to use)
-    buttons/reroll.ts       button handler (customId `dice_reroll|<p|s>|<formula>`)
+    commands/info.ts        /info handler (how to use, one page per button)
+    buttons/reroll.ts       Reroll button (customId `dice_reroll|<p|s>|<formula>`)
+    buttons/infoPage.ts     /info page buttons (customId `info_page|<page>`)
   utils/                    HandlersPath, RegisterInteractions, RegisterModules, rateLimiter
 Dockerfile
 docker-compose.yml          auto-restart (starts with Docker)

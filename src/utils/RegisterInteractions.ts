@@ -2,8 +2,9 @@ import {InteractionMatchType, InteractionsManager} from "@spatulox/discord-modul
 import {Bot} from "@spatulox/simplediscordbot";
 import {Handlers} from "./HandlersPath";
 import {roll} from "../interactions/commands/roll";
-import {info} from "../interactions/commands/info";
+import {info, INFO_PAGE_PREFIX} from "../interactions/commands/info";
 import {reroll} from "../interactions/buttons/reroll";
+import {infoPage} from "../interactions/buttons/infoPage";
 import {REROLL_PREFIX} from "../dice/format";
 
 /**
@@ -42,6 +43,8 @@ export class RegisterInteraction {
     private async button() {
         // The customId carries the formula : "dice_reroll|<p|s>|<formula>"
         this.manager.registerButton(REROLL_PREFIX, reroll, InteractionMatchType.START_WITH)
+        // "info_page|<page>" : the buttons under /info
+        this.manager.registerButton(INFO_PAGE_PREFIX, infoPage, InteractionMatchType.START_WITH)
     }
 
     private async context_menu() {
