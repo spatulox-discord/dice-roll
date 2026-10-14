@@ -1,18 +1,9 @@
 import {describe, it} from "node:test";
 import assert from "node:assert/strict";
+import {ComponentType} from "discord.js";
 import {parseFormula} from "./parser";
-import {rollFormula} from "./roller";
-import {ButtonStyle, ComponentType} from "discord.js";
-import {
-    buildFilterField,
-    buildMatText,
-    buildMiniMatText,
-    buildRollContainer,
-    buildTotalsText,
-    FILTER_FIELD_NAME,
-    TEXT_MAX_LENGTH
-} from "./format";
-import {RollResult} from "./roller";
+import {RollResult, rollFormula} from "./roller";
+import {buildFiltersText, buildRollContainer, buildRollTable, FILTER_FIELD_NAME, TEXT_MAX_LENGTH} from "./format";
 import {containerTexts, fakeUser} from "../test/components";
 
 function rollWith(input: string, values: number[]) {
@@ -20,78 +11,97 @@ function rollWith(input: string, values: number[]) {
     return rollFormula(parseFormula(input), () => values[index++]!);
 }
 
-/** The mat and the totals, then the mini mat after a blank line, as they read in Discord */
-function describeRoll(input: string, ...values: number[]): string {
-    const result = rollWith(input, values);
-    const mini = buildMiniMatText(result);
-    return `${buildMatText(result)}\n${buildTotalsText(result)}${mini ? `\n\n${mini}` : ""}`;
+function table(input: string, ...values: number[]): string {
+    return buildRollTable(rollWith(input, values));
 }
 
-describe("game mat texts", () => {
-    it("shows the mat, the dice total, the modifiers and the total", () => {
-        const description = describeRoll("2d6+1d4-2", 3, 5, 4);
-        assert.match(description, /^```\n2d6   \[3\] \[5\]  = 8\n\+1d4  \[4\]\n```/);
-        assert.match(description, /Dice total: \*\*12\*\*/);
-        assert.match(description, /Modifiers: \*\*-2\*\*/);
-        assert.match(description, /# Total: 10/);
+describe("buildRollTable", () => {
+    it("draws a single dice term with its sum", () => {
+        assert.equal(table("5d6", 1, 2, 4, 2, 4), [
+            "╔══════════════════╗",
+            "║       5d6        ║",
+            "╠═══════════╤══════╣",
+            "║   rolls   │ sum  ║",
+            "╟───────────┼──────╢",
+            "║ 1 2 4 2 4 │ [13] ║",
+            "╚═══════════╧══════╝"
+        ].join("\n"));
     });
 
-    it("pads the dice to the widest die of the roll", () => {
-        assert.match(describeRoll("1d20+1d4", 7, 3), /1d20  \[ 7\]\n\+1d4  \[ 3\]/);
+    it("adds a dice column, a mod row and a total row with several terms", () => {
+        assert.equal(table("2d20kh1+1d4+3", 15, 7, 3), [
+            "╔══════════════════════╗",
+            "║    2d20kh1+1d4+3     ║",
+            "╠══════╤════════╤══════╣",
+            "║ dice │ rolls  │ sum  ║",
+            "╟──────┼────────┼──────╢",
+            "║ 2d20 │ 15 (7) │ [15] ║",
+            "║ +1d4 │ 3      │ [3]  ║",
+            "║ mod  │        │  +3  ║",
+            "╟──────┴────────┼──────╢",
+            "║ total         │ [21] ║",
+            "╚═══════════════╧══════╝"
+        ].join("\n"));
     });
 
-    it("hides the modifiers line and the mini mat when they are not needed", () => {
-        const description = describeRoll("3d6", 4, 1, 6);
-        assert.doesNotMatch(description, /Modifiers/);
-        assert.doesNotMatch(description, /-#/);
+    it("adds a total row to a single term with a modifier", () => {
+        const lines = table("4d6kh3+2", 2, 6, 1, 5).split("\n");
+        assert.equal(lines[5], "║ 2 6 (1) 5 │ [13] ║");
+        assert.equal(lines[6], "║ mod       │  +2  ║");
+        assert.equal(lines[8], "║ total     │ [15] ║");
     });
 
-    it("applies the filters on the mat and shows every die on the mini mat", () => {
-        const description = describeRoll("4d6kh3+2", 2, 6, 1, 5);
-        const [main, mini] = description.split("\n\n");
-
-        assert.match(main!, /4d6kh3  \[2\] \[6\] \[5\]  = 13/);
-        assert.doesNotMatch(main!, /\[1\]/);
-        assert.match(main!, /# Total: 15/);
-
-        assert.match(mini!, /-# `4d6  \[2\] \[6\] \[1\] \[5\]`/);
-        assert.match(mini!, /-# Total without filter: 16/);
+    it("shows the successes with the total of their faces", () => {
+        const lines = table("4d6<=3", 1, 5, 3, 2).split("\n");
+        assert.equal(lines[3], "║   rolls   │   successes   ║");
+        assert.equal(lines[5], "║ 1 (5) 3 2 │ [3] total = 6 ║");
     });
 
-    it("counts successes, even when no die matches", () => {
-        const description = describeRoll("5d6<=3+1", 6, 4, 5, 1, 3);
-        assert.match(description, /5d6<=3  \[1\] \[3\]  = 4/);
-        assert.match(description, /# Total: 3/);
-        assert.match(description, /-# `5d6  \[6\] \[4\] \[5\] \[1\] \[3\]`/);
-
-        assert.match(describeRoll("2d6>4", 1, 2), /2d6>4  no dice\n/);
+    it("titles the sum column result when sums and successes are mixed", () => {
+        assert.match(table("1d20+4d6<=3", 12, 1, 5, 3, 2), /│ +result +║/);
     });
 
-    it("keeps the sign of negative dice terms", () => {
-        const description = describeRoll("1d20-1d6kh1", 10, 2);
-        assert.match(description, /-1d6kh1  \[ 2\]/);
-        assert.match(description, /Dice total: \*\*8\*\*/);
+    it("keeps the sign of negative terms", () => {
+        const output = table("1d20-1d6", 12, 4);
+        assert.match(output, /║ -1d6 │ 4 +│ +\[-4\] +║/);
+        assert.match(output, /║ total +│ +\[8\] +║/);
+    });
+
+    it("wraps long rolls over several lines", () => {
+        const lines = table("12d6", 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6).split("\n");
+        assert.equal(lines[5], "║ 1 2 3 4 5 6 1 2 3 4 │ [42] ║");
+        assert.equal(lines[6], "║ 5 6                 │      ║");
+    });
+
+    it("widens the table for a long formula", () => {
+        const lines = table("1d4+1d4+1d4", 1, 2, 3).split("\n");
+        assert.ok(lines.every(line => line.length === lines[0]!.length), "all lines have the same width");
+        assert.match(lines[1]!, /1d4\+1d4\+1d4/);
+    });
+
+    it("can hide the rolls", () => {
+        assert.match(buildRollTable(rollWith("5d6", [1, 2, 4, 2, 4]), true), /║ … +│ \[13\] ║/);
     });
 });
 
-describe("buildFilterField", () => {
-    it("is absent without keep / drop rules", () => {
-        assert.equal(buildFilterField(rollWith("3d6+2", [1, 2, 3])), null);
+describe("buildFiltersText", () => {
+    it("is absent without filter", () => {
+        assert.equal(buildFiltersText(rollWith("3d6+2", [1, 2, 3])), null);
     });
 
-    it("lists the dice kept by kh / kl", () => {
-        assert.equal(buildFilterField(rollWith("4d6kh3", [2, 6, 1, 5])), "`4d6kh3` keeps the 3 highest dice → `[2] [6] [5]`");
-        assert.equal(buildFilterField(rollWith("2d20kl1", [15, 7])), "`2d20kl1` keeps the lowest die → `[7]`");
+    it("describes each filter, then the legend", () => {
+        assert.equal(buildFiltersText(rollWith("2d20kh1+4d6dl1+4d6kl3", [15, 7, 3, 1, 4, 6, 2, 6, 1, 5])), [
+            "`2d20kh1` keeps the highest die",
+            "`4d6dl1` drops the lowest die",
+            "`4d6kl3` keeps the 3 lowest dice",
+            "-# (n) = not counted"
+        ].join("\n"));
     });
 
-    it("lists the dice removed by dh / dl", () => {
-        assert.equal(buildFilterField(rollWith("4d6dl1", [3, 1, 4, 6])), "`4d6dl1` drops the lowest die → `[1]`");
-        assert.equal(buildFilterField(rollWith("5d8dh2", [8, 2, 5, 7, 1])), "`5d8dh2` drops the 2 highest dice → `[8] [7]`");
-    });
-
-    it("lists the successes", () => {
-        assert.equal(buildFilterField(rollWith("4d6<=3", [1, 5, 3, 2])), "`4d6<=3` counts dice ≤ 3 as successes → `[1] [3] [2]`");
-        assert.equal(buildFilterField(rollWith("3d6=6", [1, 2, 3])), "`3d6=6` counts dice = 6 as successes → no dice");
+    it("gives the successes and the total of their faces", () => {
+        assert.equal(buildFiltersText(rollWith("4d6<=3", [1, 5, 3, 2])),
+            "`4d6<=3` counts dice ≤ 3 as successes: 3 successes (total = 6)\n-# (n) = not counted");
+        assert.match(buildFiltersText(rollWith("2d6=6", [6, 1]))!, /: 1 success \(total = 6\)/);
     });
 });
 
@@ -101,41 +111,45 @@ describe("buildRollContainer", () => {
         return {json: JSON.stringify(container.toJSON()), texts: containerTexts(container), container};
     }
 
-    it("shows the header, the mat, the totals and the reroll button", () => {
-        const {texts, container} = build(rollWith("2d6+3", [4, 5]));
+    it("shows who rolled, the table, the filters and the reroll button, in this order", () => {
+        const {texts, container} = build(rollWith("2d20kh1", [15, 7]));
 
-        assert.match(texts[0]!, /^### 🎲 2d6\+3\n-# Rolled by \*\*Testeur\\_\\\*du\\\*\\_dé\*\*$/);
-        assert.ok(texts.some(text => text.startsWith("```\n2d6")));
-        assert.ok(texts.some(text => text.includes("# Total: 12")));
+        assert.match(texts[0]!, /^-# 🎲 Rolled by \*\*Testeur\\_\\\*du\\\*\\_dé\*\*$/);
+        assert.ok(texts[1]!.startsWith("```\n╔"));
+        assert.equal(texts[2], `__**${FILTER_FIELD_NAME}**__`);
+        assert.ok(texts[3]!.startsWith("`2d20kh1` keeps the highest die"));
 
-        const section = container.toJSON().components.find(component =>
-            component.type === ComponentType.Section && component.accessory.type === ComponentType.Button);
-        assert.ok(section, "no section with the reroll button");
-        const button = section.type === ComponentType.Section ? section.accessory : null;
-        assert.ok(button && button.type === ComponentType.Button && button.style === ButtonStyle.Secondary);
-        assert.equal("custom_id" in button ? button.custom_id : null, "dice_reroll|s|2d6+3");
+        const components = container.toJSON().components;
+        const row = components[components.length - 1]!;
+        assert.equal(row.type, ComponentType.ActionRow);
+        const button = row.type === ComponentType.ActionRow ? row.components[0] : undefined;
+        assert.equal(button && "custom_id" in button ? button.custom_id : null, "dice_reroll|s|2d20kh1");
+    });
+
+    it("has no filters section without filter", () => {
+        assert.doesNotMatch(build(rollWith("3d6", [1, 2, 3])).json, /Filters|not counted/);
     });
 
     it("carries the visibility in the reroll button", () => {
         assert.match(build(rollWith("1d20", [3]), true).json, /dice_reroll\|p\|1d20/);
     });
 
-    it("adds the mini mat and the filter list only with a filter", () => {
-        assert.doesNotMatch(build(rollWith("3d6", [1, 2, 3])).json, /without filter|no filter|Dice matching/);
+    it("hides the rolls, not the sums, when they do not fit in Discord's text limit", () => {
+        // 200 dice showing 1000, almost all between parentheses : the biggest table the limits allow
+        const result = rollWith("100d1000kh1+100d1000<2", Array.from({length: 200}, () => 1000));
+        assert.ok(buildRollTable(result).length > TEXT_MAX_LENGTH, "the full table must not fit");
 
-        const {texts} = build(rollWith("6d6kl3", [1, 5, 3, 3, 6, 2]));
-        assert.ok(texts.some(text => text.startsWith("-# All dice, no filter")));
-        assert.ok(texts.includes(`__**${FILTER_FIELD_NAME}**__`));
-        assert.ok(texts.includes("`6d6kl3` keeps the 3 lowest dice → `[1] [3] [2]`"));
+        const {texts} = build(result);
+        const total = texts.reduce((sum, text) => sum + text.length, 0);
+        assert.ok(total <= TEXT_MAX_LENGTH, `${total} characters`);
+
+        const tableText = texts.find(text => text.startsWith("```\n╔"));
+        assert.ok(tableText, "the table must always be there");
+        assert.match(tableText, /│ … +│ +\[1000\] +║/);
     });
 
-    it("stays under Discord's text limit on the biggest rolls", () => {
-        const formula = "100d1000>=1+100d1000kl99";
-        const values = Array.from({length: 200}, (_, index) => 100 + index);
-        const {texts} = build(rollWith(formula, values));
-        const total = texts.reduce((sum, text) => sum + text.length, 0);
-        // The footer added by ComponentManager.toInteraction has room left
-        assert.ok(total <= TEXT_MAX_LENGTH - 60, `${total} characters`);
-        assert.ok(texts.some(text => text.startsWith("```")), "the game mat must always be there");
+    it("keeps every die when the table fits", () => {
+        const result = rollWith("100d999kh1+100d999<2", Array.from({length: 200}, () => 999));
+        assert.doesNotMatch(build(result).json, /│ … /);
     });
 });
