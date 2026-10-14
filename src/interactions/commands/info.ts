@@ -57,6 +57,16 @@ export function buildInfoContainer(): ContainerBuilder {
             ].join("\n")
         },
         {
+            name: "🎯 Target on the total",
+            value: [
+                "End the formula with `vs` and a value: the roll succeeds when the **total** reaches it",
+                "`2d6+3 vs 8`: success when the total is 8 or more (`>=` by default)",
+                "`1d100 vs <=45`: success when the total is 45 or less (roll under)",
+                "`6d10>=8 vs 3`: success with at least 3 successes",
+                "Not to be confused with `2d6>=8`, which compares **each die** (and counts successes)"
+            ].join("\n")
+        },
+        {
             name: "📊 Reading the result",
             value: [
                 "A table with the formula, one row per group of dice: the **rolls** and their **sum** (or successes)",

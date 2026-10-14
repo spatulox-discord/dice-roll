@@ -94,12 +94,16 @@ See [With Docker (manual start)](#with-docker-manual-start) for details.
 | `4d6dl1` | drops the **lowest** die (*drop lowest*), `dh` drops the highest |
 | `4d6<=3` | counts the dice showing **3 or less** as successes (roll under) |
 | `6d10>=8` | counts the dice showing **8 or more** as successes (dice pools) |
+| `2d6+3 vs 8` | succeeds when the **total** is 8 or more (`vs <=45`, `vs >8`… for other comparisons) |
 
 - After `kh` / `kl` / `dh` / `dl`, the number is a **number of dice** (1 by default: `2d20kh` = `2d20kh1`).
 - After a comparison (`<`, `<=`, `>`, `>=`, `=`), the number is a **face value**: the group is worth the
   **number of successes**, and the total of their faces is shown too. Modifiers add to the successes
   (`6d10>=8+1`). If no die succeeds, the group is worth 0.
 - One filter (keep or count) per group of dice.
+- `vs` compares the **total** with a target and shows ✅ Success or ❌ Failure under the table. It goes at the end
+  of the formula, `>=` by default: `2d6+3 vs 8`, `1d100 vs <=45`, `6d10>=8 vs 3` (at least 3 successes).
+  Not to be confused with `2d6>=8`, which compares **each die**.
 
 The result is a **Components V2** message: who rolled, a table of the roll, the **Filters** section when the
 roll has a filter, and the **🎲 Reroll** button. For `2d20kh1+1d4+3`:

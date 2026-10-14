@@ -27,21 +27,24 @@ type DiceTermResult = TermResult & {term: DiceTerm};
  * The roll as a Components V2 container :
  * - who rolled, in small text
  * - the table of the roll (see buildRollTable)
+ * - success / failure, only with a `vs` target
  * - the "Filters" list, only when a term has a filter
  * - the "Reroll" button
  */
 export function buildRollContainer(result: RollResult, user: User, isPrivate: boolean): ContainerBuilder {
     const rolledBy = `-# 🎲 Rolled by **${escapeMarkdown(user.displayName)}**`;
+    const outcome = buildTargetText(result);
     const filters = buildFiltersText(result);
 
     // Every die is listed in the table : on huge rolls, only the sums fit in Discord's text limit
-    const fixedLength = rolledBy.length + (filters ? FILTER_FIELD_NAME.length + 6 + filters.length : 0);
+    const fixedLength = rolledBy.length + (outcome?.length ?? 0) + (filters ? FILTER_FIELD_NAME.length + 6 + filters.length : 0);
     let table = codeBlock(buildRollTable(result));
     if (fixedLength + table.length > TEXT_MAX_LENGTH) {
         table = codeBlock(buildRollTable(result, true));
     }
 
     const fields: ComponentManagerField[] = [{value: table, separator: false}];
+    if (outcome) fields.push({value: outcome, separator: false});
     if (filters) fields.push({name: FILTER_FIELD_NAME, value: filters, separator: false});
     fields.push({button: [buildRerollButton(result.formula.normalized, isPrivate)]});
 
@@ -151,6 +154,17 @@ export function buildRollTable(result: RollResult, hideRolls = false): string {
     return lines.join("\n");
 }
 
+/** Whether the total reaches the `vs` target, e.g. "### ✅ Success: 11 ≥ 8". Null without target */
+export function buildTargetText(result: RollResult): string | null {
+    const target = result.formula.target;
+    if (!target || result.success === null) {
+        return null;
+    }
+    return result.success
+        ? `### ✅ Success: ${result.total} ${OPERATOR_SYMBOLS[target.operator]} ${target.value}`
+        : `### ❌ Failure: ${result.total} ${NEGATED_OPERATOR_SYMBOLS[target.operator]} ${target.value}`;
+}
+
 /**
  * One line per term with a filter, in words, then the legend of the parentheses.
  * Null when no term has a filter.
@@ -172,6 +186,8 @@ export function buildFiltersText(result: RollResult): string | null {
 }
 
 const OPERATOR_SYMBOLS: Record<CompareOperator, string> = {'<': "<", '<=': "≤", '>': ">", '>=': "≥", '=': "="};
+/** What the total is when the comparison fails : 5 < 8 when ">= 8" fails */
+const NEGATED_OPERATOR_SYMBOLS: Record<CompareOperator, string> = {'<': "≥", '<=': ">", '>': "≤", '>=': "<", '=': "≠"};
 
 function describeFilter(filter: DiceFilter): string {
     if (filter.type === 'success') {

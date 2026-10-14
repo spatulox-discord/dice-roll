@@ -42,6 +42,31 @@ describe("parseFormula", () => {
         assert.equal(parseFormula("6d10>=8+1").normalized, "6d10>=8+1");
     });
 
+    it("parses a vs target on the total, >= by default", () => {
+        const formula = parseFormula("2d6+3 vs 8");
+        assert.deepEqual(formula.target, {operator: '>=', value: 8});
+        assert.equal(formula.normalized, "2d6+3 vs 8");
+        assert.equal(parseFormula("2d6+3VS8").normalized, "2d6+3 vs 8");
+        assert.equal(parseFormula("2d6 vs >=8").normalized, "2d6 vs 8");
+    });
+
+    it("parses every comparison and negative targets", () => {
+        for (const operator of ["<", "<=", ">", "="]) {
+            assert.equal(parseFormula(`1d100 vs ${operator} 45`).normalized, `1d100 vs ${operator}45`);
+        }
+        assert.deepEqual(parseFormula("1d4-5 vs -2").target, {operator: '>=', value: -2});
+    });
+
+    it("combines a success count with a target", () => {
+        const formula = parseFormula("6d10>=8 vs 3");
+        assert.deepEqual(formula.terms[0], {kind: 'dice', sign: 1, count: 6, sides: 10, filter: {type: 'success', operator: '>=', value: 8}});
+        assert.deepEqual(formula.target, {operator: '>=', value: 3});
+    });
+
+    it("has no target without vs", () => {
+        assert.equal(parseFormula("2d6").target, null);
+    });
+
     const invalid: [string, string][] = [
         ["", "empty"],
         ["   ", "only spaces"],
@@ -67,6 +92,13 @@ describe("parseFormula", () => {
         ["4d6>6", "comparison no face can match"],
         ["4d6<1", "comparison below every face"],
         ["4d6kh2<3", "two filters on one term"],
+        ["vs 8", "a target without dice"],
+        ["2d6 vs", "vs without a value"],
+        ["2d6 vs abc", "vs with garbage"],
+        ["2d6 vs 8 vs 9", "two targets"],
+        ["2d6 vs 8+1", "a term after the target"],
+        ["2d6 vs => 8", "unknown target comparison"],
+        ["2d6 vs 2000000", "target too big"],
         [`1d20+${LIMITS.maxConstant + 1}`, "constant too big"],
         ["1d6".padEnd(LIMITS.formulaLength + 1, "1"), "formula too long"]
     ];

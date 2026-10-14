@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {ComponentType} from "discord.js";
 import {parseFormula} from "./parser";
 import {RollResult, rollFormula} from "./roller";
-import {buildFiltersText, buildRollContainer, buildRollTable, FILTER_FIELD_NAME, TEXT_MAX_LENGTH} from "./format";
+import {buildFiltersText, buildRollContainer, buildRollTable, buildTargetText, FILTER_FIELD_NAME, TEXT_MAX_LENGTH} from "./format";
 import {containerTexts, fakeUser} from "../test/components";
 
 function rollWith(input: string, values: number[]) {
@@ -84,6 +84,23 @@ describe("buildRollTable", () => {
     });
 });
 
+describe("buildTargetText", () => {
+    it("is absent without vs", () => {
+        assert.equal(buildTargetText(rollWith("2d6", [1, 2])), null);
+    });
+
+    it("shows the success with the comparison", () => {
+        assert.equal(buildTargetText(rollWith("2d6+3 vs 8", [4, 4])), "### ✅ Success: 11 ≥ 8");
+        assert.equal(buildTargetText(rollWith("1d100 vs <=45", [37])), "### ✅ Success: 37 ≤ 45");
+    });
+
+    it("shows the failure with the opposite comparison", () => {
+        assert.equal(buildTargetText(rollWith("2d6+3 vs 8", [1, 2])), "### ❌ Failure: 6 < 8");
+        assert.equal(buildTargetText(rollWith("1d100 vs <=45", [46])), "### ❌ Failure: 46 > 45");
+        assert.equal(buildTargetText(rollWith("1d6 vs =6", [2])), "### ❌ Failure: 2 ≠ 6");
+    });
+});
+
 describe("buildFiltersText", () => {
     it("is absent without filter", () => {
         assert.equal(buildFiltersText(rollWith("3d6+2", [1, 2, 3])), null);
@@ -124,6 +141,13 @@ describe("buildRollContainer", () => {
         assert.equal(row.type, ComponentType.ActionRow);
         const button = row.type === ComponentType.ActionRow ? row.components[0] : undefined;
         assert.equal(button && "custom_id" in button ? button.custom_id : null, "dice_reroll|s|2d20kh1");
+    });
+
+    it("puts the success / failure right under the table", () => {
+        const {texts} = build(rollWith("2d6+3 vs 8", [4, 4]));
+        assert.ok(texts[1]!.startsWith("```\n╔"));
+        assert.match(texts[1]!, /2d6\+3 vs 8/);
+        assert.equal(texts[2], "### ✅ Success: 11 ≥ 8");
     });
 
     it("has no filters section without filter", () => {

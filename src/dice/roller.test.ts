@@ -65,6 +65,15 @@ describe("rollFormula", () => {
         assert.equal(roll("4d6<=3-4d6<=3", 1, 2, 6, 6, 1, 6, 6, 6).total, 1);
     });
 
+    it("compares the total with the vs target", () => {
+        assert.equal(roll("2d6+3 vs 8", 4, 4).success, true);
+        assert.equal(roll("2d6+3 vs 8", 1, 2).success, false);
+        assert.equal(roll("2d6+2 vs 8", 3, 3).success, true, "a total equal to the target succeeds with >=");
+        assert.equal(roll("1d100 vs <=45", 46).success, false);
+        assert.equal(roll("6d10>=8 vs 3", 9, 3, 8, 1, 10, 7).success, true);
+        assert.equal(roll("2d6", 1, 2).success, null);
+    });
+
     it("is worth 0 when no die succeeds", () => {
         const result = roll("2d6>4+1", 1, 2);
         assert.equal(result.total, 1);

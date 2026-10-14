@@ -26,12 +26,15 @@ export type RollResult = {
     formula: DiceFormula
     terms: TermResult[]
     total: number
+    /** Whether the total matches the `vs` target, null without target */
+    success: boolean | null
 };
 
 export function rollFormula(formula: DiceFormula, rng: Rng = cryptoRng): RollResult {
     const terms = formula.terms.map(term => rollTerm(term, rng));
     const total = terms.reduce((sum, term) => sum + term.subtotal, 0);
-    return {formula, terms, total};
+    const success = formula.target ? matchesValue(total, formula.target) : null;
+    return {formula, terms, total, success};
 }
 
 function rollTerm(term: Term, rng: Rng): TermResult {

@@ -6,6 +6,8 @@
  * - `kh` / `kl` / `dh` / `dl` + an optional number of dice (default 1) : keeps / drops the N highest / lowest dice,
  *   e.g. `2d20kh1` (advantage), `4d6kh3`, `4d6dl1`
  * - `<` `<=` `>` `>=` or `=` + a face value : counts the dice matching it as successes, e.g. `4d6<=3`, `6d10>=8`
+ * and an optional target on the total at the end : `vs` + an optional comparison (`>=` by default) + a value,
+ * e.g. `2d6+3 vs 8`, `1d100 vs <=45`, `6d10>=8 vs 3`.
  * Examples : `1d20+5`, `2d20kh1 + 1d4 - 1`, `6d10>=8+1`, `d%`.
  */
 
@@ -17,12 +19,19 @@ export const LIMITS = {
     minSides: 2,
     maxSides: 1000,
     maxConstant: 10_000,
-    maxTerms: 20
+    maxTerms: 20,
+    maxTarget: 1_000_000
 } as const;
 
 export type KeepMode = 'kh' | 'kl' | 'dh' | 'dl';
 
 export type CompareOperator = '<' | '<=' | '>' | '>=' | '=';
+
+/** `operator value`, e.g. ">= 8" */
+export type Comparison = {
+    operator: CompareOperator
+    value: number
+};
 
 /** Keeps (kh / kl) or drops (dh / dl) the `count` highest / lowest dice, the others count for nothing */
 export type KeepFilter = {
@@ -58,7 +67,9 @@ export type Term = DiceTerm | ConstantTerm;
 
 export type DiceFormula = {
     terms: Term[]
-    /** Canonical form of the formula, e.g. "4d6kh3+2" */
+    /** The total must match it for the roll to succeed (`vs`), null without target */
+    target: Comparison | null
+    /** Canonical form of the formula, e.g. "4d6kh3+2", "2d6+3 vs 8" */
     normalized: string
 };
 
@@ -69,16 +80,26 @@ export class DiceParseError extends Error {
     }
 }
 
+const TARGET_REGEX = /^vs(<=|>=|<|>|=)?(-?\d+)$/;
+
 const TERM_REGEX = /([+-])?(?:(\d*)d(\d+|%)(?:(kh|kl|dh|dl)(\d*)|(<=|>=|<|>|=)(\d+))?|(\d+))/y;
 
 export function parseFormula(input: string): DiceFormula {
-    const formula = input.replace(/\s+/g, '').toLowerCase();
+    const compact = input.replace(/\s+/g, '').toLowerCase();
 
-    if (!formula) {
+    if (!compact) {
         throw new DiceParseError('The formula is empty.');
     }
-    if (formula.length > LIMITS.formulaLength) {
+    if (compact.length > LIMITS.formulaLength) {
         throw new DiceParseError(`The formula is too long (${LIMITS.formulaLength} characters max).`);
+    }
+
+    // "vs" can only start the target : no other part of the notation contains a "v"
+    const vsIndex = compact.indexOf('vs');
+    const formula = vsIndex === -1 ? compact : compact.slice(0, vsIndex);
+    const target = vsIndex === -1 ? null : parseTarget(compact.slice(vsIndex));
+    if (!formula) {
+        throw new DiceParseError('The formula is empty : add dice before `vs`, e.g. `2d6+3 vs 8`.');
     }
 
     const terms: Term[] = [];
@@ -159,12 +180,29 @@ export function parseFormula(input: string): DiceFormula {
     }
 
     // "d6kh1" becomes "1d6kh1" : the canonical form can be longer than the input
-    const normalized = formatFormula(terms);
+    const normalized = formatFormula(terms) + (target ? ` vs ${formatTarget(target)}` : '');
     if (normalized.length > LIMITS.formulaLength) {
         throw new DiceParseError(`The formula is too long (${LIMITS.formulaLength} characters max).`);
     }
 
-    return {terms, normalized};
+    return {terms, target, normalized};
+}
+
+function parseTarget(text: string): Comparison {
+    const match = TARGET_REGEX.exec(text);
+    if (!match) {
+        throw new DiceParseError(`Invalid target \`${text}\`. Example: \`2d6+3 vs 8\`, \`1d100 vs <=45\`.`);
+    }
+    const value = parseInt(match[2]!, 10);
+    if (Math.abs(value) > LIMITS.maxTarget) {
+        throw new DiceParseError(`The target \`${value}\` is too big (${LIMITS.maxTarget} max).`);
+    }
+    return {operator: (match[1] ?? '>=') as CompareOperator, value};
+}
+
+/** ">= 8" is written "8", the default comparison */
+function formatTarget({operator, value}: Comparison): string {
+    return operator === '>=' ? `${value}` : `${operator}${value}`;
 }
 
 export function formatTerm(term: Term): string {
@@ -178,8 +216,8 @@ export function formatFilter(filter: DiceFilter): string {
     return filter.type === 'keep' ? `${filter.mode}${filter.count}` : `${filter.operator}${filter.value}`;
 }
 
-/** True when a die showing `face` is a success */
-export function matchesValue(face: number, {operator, value}: SuccessFilter): boolean {
+/** True when `face` (a die, or the total for a target) matches the comparison */
+export function matchesValue(face: number, {operator, value}: Comparison): boolean {
     switch (operator) {
         case '<':
             return face < value;
