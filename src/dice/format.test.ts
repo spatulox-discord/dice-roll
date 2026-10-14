@@ -152,6 +152,12 @@ describe("buildFiltersText", () => {
             "`4d6<=3` counts dice ≤ 3 as successes: 3 successes\n-# (n) = not counted");
         assert.match(buildFiltersText(rollWith("2d6=6", [6, 1]))!, /: 1 success$/m);
     });
+
+    it("shows the sign of a subtracted term", () => {
+        const result = rollWith("3d6>=4-3d6>=4", [5, 5, 5, 5, 5, 5]);
+        assert.match(buildFiltersText(result)!, /^`3d6>=4` .*\n`-3d6>=4` /);
+        assert.match(buildFacesTotalsText(result)!, /^## Total `3d6>=4`:\n(.*\n){2}## Total `-3d6>=4`:/);
+    });
 });
 
 describe("buildRollContainer", () => {

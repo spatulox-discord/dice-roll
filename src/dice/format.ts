@@ -197,7 +197,7 @@ export function buildTargetText(result: RollResult): string | null {
 export function buildFacesTotalsText(result: RollResult): string | null {
     const successTerms = result.terms.filter(isDiceTerm).filter(({term}) => term.filter?.type === 'success');
     const blocks = successTerms.map(({term, dice, faceTotal}) => [
-        successTerms.length > 1 ? `## Total \`${formatTerm(term)}\`:` : "## Total:",
+        successTerms.length > 1 ? `## Total \`${signedTerm(term)}\`:` : "## Total:",
         `- faces: **${sumOf(dice.map(die => die.value))}**`,
         `- successes faces: **${faceTotal}**`
     ].join("\n"));
@@ -213,7 +213,7 @@ export function buildFiltersText(result: RollResult): string | null {
         if (!term.filter) {
             return [];
         }
-        const description = `\`${formatTerm(term)}\` ${describeFilter(term.filter)}`;
+        const description = `\`${signedTerm(term)}\` ${describeFilter(term.filter)}`;
         if (term.filter.type !== 'success') {
             return [description];
         }
@@ -243,6 +243,11 @@ function describeFilter(filter: DiceFilter): string {
 function sumColumnHeader(terms: DiceTermResult[]): string {
     const successes = terms.filter(term => term.term.filter?.type === 'success').length;
     return successes === 0 ? "sum" : successes === terms.length ? "successes" : "result";
+}
+
+/** "-3d6>=4" for a subtracted term, so it is not mistaken for an added one */
+function signedTerm(term: DiceTerm): string {
+    return `${term.sign === -1 ? "-" : ""}${formatTerm(term)}`;
 }
 
 function diceLabel({term}: DiceTermResult, index: number): string {
