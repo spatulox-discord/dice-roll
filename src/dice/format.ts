@@ -1,4 +1,4 @@
-import {ButtonBuilder, ContainerBuilder, escapeMarkdown, User} from "discord.js";
+import {ButtonBuilder, ContainerBuilder, escapeMarkdown} from "discord.js";
 import {ButtonManager, ComponentManager, ComponentManagerField, SimpleColor} from "@spatulox/simplediscordbot";
 import {CompareOperator, DiceFilter, DiceTerm, formatTerm} from "./parser";
 import {RollResult, TermResult} from "./roller";
@@ -32,17 +32,17 @@ type DiceTermResult = TermResult & {term: DiceTerm};
  * - the "Filters" list, only when a term has a filter
  * - the "Reroll" button
  */
-export function buildRollContainer(result: RollResult, user: User, isPrivate: boolean): ContainerBuilder {
+export function buildRollContainer(result: RollResult, displayName: string, isPrivate: boolean): ContainerBuilder {
     // Every die is listed in the table : on huge rolls, only the sums fit in Discord's text limit
-    const container = assembleRollContainer(result, user, isPrivate, false);
+    const container = assembleRollContainer(result, displayName, isPrivate, false);
     if (containerTextLength(container) <= TEXT_MAX_LENGTH) {
         return container;
     }
-    return assembleRollContainer(result, user, isPrivate, true);
+    return assembleRollContainer(result, displayName, isPrivate, true);
 }
 
-function assembleRollContainer(result: RollResult, user: User, isPrivate: boolean, hideDice: boolean): ContainerBuilder {
-    const rolledBy = `-# 🎲 Rolled by **${escapeMarkdown(user.displayName)}**`;
+function assembleRollContainer(result: RollResult, displayName: string, isPrivate: boolean, hideDice: boolean): ContainerBuilder {
+    const rolledBy = `-# 🎲 Rolled by **${escapeMarkdown(displayName)}**`;
     const facesTotals = buildFacesTotalsText(result);
     const outcome = buildTargetText(result);
     const filters = buildFiltersText(result);

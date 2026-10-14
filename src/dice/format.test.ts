@@ -12,7 +12,7 @@ import {
     FILTER_FIELD_NAME,
     TEXT_MAX_LENGTH
 } from "./format";
-import {containerTexts, fakeUser} from "../test/components";
+import {containerTexts, fakeDisplayName} from "../test/components";
 
 function rollWith(input: string, values: number[]) {
     let index = 0;
@@ -162,7 +162,7 @@ describe("buildFiltersText", () => {
 
 describe("buildRollContainer", () => {
     function build(result: RollResult, isPrivate = false) {
-        const container = buildRollContainer(result, fakeUser, isPrivate);
+        const container = buildRollContainer(result, fakeDisplayName, isPrivate);
         return {json: JSON.stringify(container.toJSON()), texts: containerTexts(container), container};
     }
 
@@ -217,8 +217,7 @@ describe("buildRollContainer", () => {
     it("hides the dice when the filters and a long escaped name push past Discord's text limit", () => {
         // Found by fuzzing : 4002 characters when the filters header was under-estimated
         const formula = "50d1000dh1+2d999dh1-1d100>=1-d100<=999+2d2=1-d999=1-99d%<=999";
-        const user = {...fakeUser, displayName: "_*".repeat(16)} as typeof fakeUser;
-        const texts = containerTexts(buildRollContainer(rollFormula(parseFormula(formula), sides => sides), user, false));
+        const texts = containerTexts(buildRollContainer(rollFormula(parseFormula(formula), sides => sides), "_*".repeat(16), false));
         const total = texts.reduce((sum, text) => sum + text.length, 0);
 
         assert.ok(total <= TEXT_MAX_LENGTH, `${total} characters`);

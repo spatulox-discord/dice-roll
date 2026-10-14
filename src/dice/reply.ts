@@ -1,4 +1,4 @@
-import {RepliableInteraction} from "discord.js";
+import {GuildMember, RepliableInteraction} from "discord.js";
 import {ComponentManager} from "@spatulox/simplediscordbot";
 import {Time} from "@spatulox/utils";
 import {isUserRateLimited, RateLimiter} from "../utils/rateLimiter";
@@ -35,11 +35,21 @@ export async function replyWithRoll(
     }
 
     const result = rollFormula(formula)
-    const container = buildRollContainer(result, interaction.user, isPrivate)
+    const container = buildRollContainer(result, displayNameOf(interaction), isPrivate)
 
     await interaction.reply({
         ...ComponentManager.toInteraction(container, null, false, isPrivate),
         // The display name of the user is in the message : never let it ping anyone
         allowedMentions: {parse: []}
     })
+}
+
+/** The server nickname when there is one, the global display name otherwise */
+function displayNameOf(interaction: RepliableInteraction): string {
+    const member = interaction.member
+    if (member instanceof GuildMember) {
+        return member.displayName
+    }
+    // Not cached (user install in a server without the bot) : the raw API member
+    return member?.nick ?? interaction.user.displayName
 }
