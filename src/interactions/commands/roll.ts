@@ -3,12 +3,12 @@ import {Bot} from "@spatulox/simplediscordbot";
 import {replyWithRoll} from "../../dice/reply";
 
 /**
- * /roll formule:<string> prive:<boolean?>
+ * /roll formula:<string> private:<boolean?>
  */
 export async function roll(interaction: ChatInputCommandInteraction) {
     try {
-        const formula = interaction.options.getString("formule", true)
-        const isPrivate = interaction.options.getBoolean("prive") ?? false
+        const formula = interaction.options.getString("formula", true)
+        const isPrivate = interaction.options.getBoolean("private") ?? false
 
         await replyWithRoll(interaction, formula, isPrivate)
     } catch (error) {

@@ -11,7 +11,7 @@ export const TEXT_MAX_LENGTH = 4000;
 /** Room kept for the footer ComponentManager adds (bot name + timestamps) */
 const FOOTER_RESERVED_LENGTH = 100;
 
-export const FILTER_FIELD_NAME = "Dés correspondant au filtre";
+export const FILTER_FIELD_NAME = "Dice matching filter";
 
 export type RerollPayload = {
     formula: string
@@ -28,7 +28,7 @@ type DiceTermResult = TermResult & {term: DiceTerm};
  * - with a filter : the mini mat (every die, no filter) and the "Dés correspondant au filtre" list
  */
 export function buildRollContainer(result: RollResult, user: User, isPrivate: boolean): ContainerBuilder {
-    const header = `### 🎲 ${result.formula.normalized}\n-# Lancé par **${escapeMarkdown(user.displayName)}**`;
+    const header = `### 🎲 ${result.formula.normalized}\n-# Rolled by **${escapeMarkdown(user.displayName)}**`;
     const container = ComponentManager.create({
         title: header,
         thumbnailUrl: user.displayAvatarURL(),
@@ -52,7 +52,7 @@ export function buildRollContainer(result: RollResult, user: User, isPrivate: bo
 
 /** Ephemeral error answer (invalid formula, stale button...) */
 export function buildErrorContainer(message: string): ContainerBuilder {
-    return ComponentManager.create({title: "### ❌ Lancer impossible", description: message, color: SimpleColor.error});
+    return ComponentManager.create({title: "### ❌ Cannot roll", description: message, color: SimpleColor.error});
 }
 
 /**
@@ -86,11 +86,11 @@ export function buildTotalsText(result: RollResult): string {
     const diceTotal = result.terms.filter(isDiceTerm).reduce((sum, term) => sum + term.subtotal, 0);
     const modifiers = result.terms.filter(term => term.term.kind === 'constant');
 
-    const lines = [`Total des dés : **${diceTotal}**`];
+    const lines = [`Dice total: **${diceTotal}**`];
     if (modifiers.length > 0) {
-        lines.push(`Modificateurs : **${signed(sumOf(modifiers.map(term => term.subtotal)))}**`);
+        lines.push(`Modifiers: **${signed(sumOf(modifiers.map(term => term.subtotal)))}**`);
     }
-    lines.push(`# Total : ${result.total}`);
+    lines.push(`# Total: ${result.total}`);
     return lines.join("\n");
 }
 
@@ -109,9 +109,9 @@ export function buildMiniMatText(result: RollResult): string | null {
         : sum + term.term.sign * sumOf(term.dice.map(die => die.value)), 0);
 
     return [
-        "-# Tous les dés, sans filtre :",
+        "-# All dice, no filter:",
         ...mat(diceTerms, dieWidth(diceTerms), false).map(line => `-# \`${line}\``),
-        `-# Total sans filtre : ${rawTotal}`
+        `-# Total without filter: ${rawTotal}`
     ].join("\n");
 }
 
@@ -127,7 +127,7 @@ export function buildFilterField(result: RollResult): string | null {
         const keeps = term.keep.mode !== 'dh' && term.keep.mode !== 'dl';
         const matched = dice.filter(die => die.kept === keeps).map(die => `[${die.value}]`).join(" ");
         // A face value filter can match no die at all
-        const shown = matched ? `\`${matched}\`` : "aucun dé";
+        const shown = matched ? `\`${matched}\`` : "no dice";
         return [`\`${formatTerm(term)}\` ${describeRule(term.keep)} → ${shown}`];
     });
 
@@ -139,11 +139,11 @@ const OPERATOR_SYMBOLS: Record<CompareOperator, string> = {'<': "<", '<=': "≤"
 function describeRule({mode, operator, value}: KeepRule): string {
     switch (mode) {
         case 'dh':
-            return `retire les dés ≥ ${value}`;
+            return `removes dice ≥ ${value}`;
         case 'dl':
-            return `retire les dés ≤ ${value}`;
+            return `removes dice ≤ ${value}`;
         default:
-            return `garde les dés ${OPERATOR_SYMBOLS[operator]} ${value}`;
+            return `keeps dice ${OPERATOR_SYMBOLS[operator]} ${value}`;
     }
 }
 
@@ -161,7 +161,7 @@ function mat(terms: DiceTermResult[], width: number, applyKeep: boolean): string
 
     return terms.map((result, index) => {
         const values = result.dice.filter(die => !applyKeep || die.kept).map(die => die.value);
-        const dice = values.map(value => `[${`${value}`.padStart(width)}]`).join(" ") || "aucun dé";
+        const dice = values.map(value => `[${`${value}`.padStart(width)}]`).join(" ") || "no dice";
         const subtotal = applyKeep && values.length > 1 ? `  = ${sumOf(values)}` : "";
         return `${labels[index]!.padEnd(labelWidth)}  ${dice}${subtotal}`;
     });
@@ -189,7 +189,7 @@ function signed(value: number): string {
 
 export function buildRerollButton(formula: string, isPrivate: boolean): ButtonBuilder {
     const customId = [REROLL_PREFIX, isPrivate ? "p" : "s", formula].join(REROLL_SEPARATOR);
-    return ButtonManager.secondary({customId, label: "Relancer", emoji: "🎲"});
+    return ButtonManager.secondary({customId, label: "Reroll", emoji: "🎲"});
 }
 
 export function parseRerollId(customId: string): RerollPayload | null {

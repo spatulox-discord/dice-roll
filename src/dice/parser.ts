@@ -77,10 +77,10 @@ export function parseFormula(input: string): DiceFormula {
     const formula = input.replace(/\s+/g, '').toLowerCase();
 
     if (!formula) {
-        throw new DiceParseError('La formule est vide.');
+        throw new DiceParseError('The formula is empty.');
     }
     if (formula.length > LIMITS.formulaLength) {
-        throw new DiceParseError(`La formule est trop longue (${LIMITS.formulaLength} caractères maximum).`);
+        throw new DiceParseError(`The formula is too long (${LIMITS.formulaLength} characters max).`);
     }
 
     const terms: Term[] = [];
@@ -92,16 +92,16 @@ export function parseFormula(input: string): DiceFormula {
         const match = TERM_REGEX.exec(formula);
 
         if (!match) {
-            throw new DiceParseError(`Formule invalide près de \`${formula.slice(start)}\`. Exemple : \`2d20+3\`, \`4d6kh3\`.`);
+            throw new DiceParseError(`Invalid formula near \`${formula.slice(start)}\`. Example: \`2d20+3\`, \`4d6kh3\`.`);
         }
 
         const [, signChar, countStr, sidesStr, shortcut, shortcutValue, operator, operatorValue, constantStr] = match;
 
         if (terms.length > 0 && !signChar) {
-            throw new DiceParseError(`Il manque un \`+\` ou un \`-\` avant \`${match[0]}\`.`);
+            throw new DiceParseError(`Missing a \`+\` or a \`-\` before \`${match[0]}\`.`);
         }
         if (terms.length >= LIMITS.maxTerms) {
-            throw new DiceParseError(`Trop de termes (${LIMITS.maxTerms} maximum).`);
+            throw new DiceParseError(`Too many terms (${LIMITS.maxTerms} max).`);
         }
 
         const sign = signChar === '-' ? -1 : 1;
@@ -109,7 +109,7 @@ export function parseFormula(input: string): DiceFormula {
         if (constantStr !== undefined) {
             const value = parseInt(constantStr, 10);
             if (value > LIMITS.maxConstant) {
-                throw new DiceParseError(`Le modificateur \`${value}\` est trop grand (${LIMITS.maxConstant} maximum).`);
+                throw new DiceParseError(`The modifier \`${value}\` is too big (${LIMITS.maxConstant} max).`);
             }
             terms.push({kind: 'constant', sign, value});
             continue;
@@ -119,18 +119,18 @@ export function parseFormula(input: string): DiceFormula {
         const sides = sidesStr === '%' ? 100 : parseInt(sidesStr!, 10);
 
         if (count < 1) {
-            throw new DiceParseError('Il faut lancer au moins un dé.');
+            throw new DiceParseError('You must roll at least one die.');
         }
         if (count > LIMITS.dicePerTerm) {
-            throw new DiceParseError(`Trop de dés dans \`${match[0]}\` (${LIMITS.dicePerTerm} maximum).`);
+            throw new DiceParseError(`Too many dice in \`${match[0]}\` (${LIMITS.dicePerTerm} max).`);
         }
         if (sides < LIMITS.minSides || sides > LIMITS.maxSides) {
-            throw new DiceParseError(`Un dé doit avoir entre ${LIMITS.minSides} et ${LIMITS.maxSides} faces.`);
+            throw new DiceParseError(`A die must have between ${LIMITS.minSides} and ${LIMITS.maxSides} sides.`);
         }
 
         totalDice += count;
         if (totalDice > LIMITS.totalDice) {
-            throw new DiceParseError(`Trop de dés au total (${LIMITS.totalDice} maximum).`);
+            throw new DiceParseError(`Too many dice in total (${LIMITS.totalDice} max).`);
         }
 
         let keep: KeepRule | null = null;
@@ -141,20 +141,20 @@ export function parseFormula(input: string): DiceFormula {
             keep = {mode: 'k', operator: operator as CompareOperator, value: parseInt(operatorValue!, 10)};
         }
         if (keep && !Array.from({length: sides}, (_, face) => face + 1).some(face => matchesValue(face, keep!))) {
-            throw new DiceParseError(`\`${match[0]}\` : ce filtre ne laisse aucune face possible sur un d${sides}.`);
+            throw new DiceParseError(`\`${match[0]}\`: this filter leaves no possible face on a d${sides}.`);
         }
 
         terms.push({kind: 'dice', sign, count, sides, keep});
     }
 
     if (!terms.some(term => term.kind === 'dice')) {
-        throw new DiceParseError('La formule doit contenir au moins un dé (ex. `1d20`).');
+        throw new DiceParseError('The formula must contain at least one die (e.g. `1d20`).');
     }
 
     // "d6kh1" becomes "1d6kh1" : the canonical form can be longer than the input
     const normalized = formatFormula(terms);
     if (normalized.length > LIMITS.formulaLength) {
-        throw new DiceParseError(`La formule est trop longue (${LIMITS.formulaLength} caractères maximum).`);
+        throw new DiceParseError(`The formula is too long (${LIMITS.formulaLength} characters max).`);
     }
 
     return {terms, normalized};

@@ -1,7 +1,7 @@
 {
   "name": "info_dev",
   "type": 1,
-  "description": "Comment écrire une formule de dés (kh, kl, dh, dl…) et lire le résultat",
+  "description": "How to write a dice formula (kh, kl, dh, dl…) and read the result",
   "integration_types": [
     0,
     1

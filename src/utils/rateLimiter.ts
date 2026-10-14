@@ -15,7 +15,7 @@ export async function isUserRateLimited(
     }
 
     await interaction.reply({
-        content: `Doucement ! Réessaie dans ${milliseconds / 1000} secondes :)`,
+        content: `Slow down! Try again in ${milliseconds / 1000} seconds :)`,
         flags: MessageFlags.Ephemeral
     })
     return true

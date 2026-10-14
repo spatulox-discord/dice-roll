@@ -11,7 +11,7 @@ export async function reroll(interaction: ButtonInteraction) {
     try {
         const payload = parseRerollId(interaction.customId)
         if (!payload) {
-            await interaction.reply(ComponentManager.toInteraction(buildErrorContainer("Ce bouton n'est plus valide."), null, false, true))
+            await interaction.reply(ComponentManager.toInteraction(buildErrorContainer("This button is no longer valid."), null, false, true))
             return
         }
 

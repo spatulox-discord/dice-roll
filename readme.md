@@ -1,164 +1,163 @@
 # Dice Roll 🎲
 
-Bot Discord de lancer de dés, basé sur
-[SimpleDiscordBot](https://github.com/spatulox-discord/SimpleDiscordBot) et le
+Discord dice roller bot, built on
+[SimpleDiscordBot](https://github.com/spatulox-discord/SimpleDiscordBot) and the
 [DiscordBotTemplate](https://github.com/Spatulox/DiscordBotTemplate).
 
-| Package | Rôle |
+| Package | Role |
 |---|---|
-| [`@spatulox/simplediscordbot`](https://www.npmjs.com/package/@spatulox/simplediscordbot) | `Bot` (login automatique + logs), `ComponentManager` (Components V2), `ButtonManager`… |
-| [`@spatulox/discord-module`](https://www.npmjs.com/package/@spatulox/discord-module) | `InteractionsManager` : route `/roll` et le bouton « Relancer » |
-| [`@spatulox/discord-interaction-manager`](https://www.npmjs.com/package/@spatulox/discord-interaction-manager) | CLI `dim` : déploie la commande `/roll` sur Discord |
-| [`@spatulox/utils`](https://www.npmjs.com/package/@spatulox/utils) | `Time` (durées du rate limit) |
+| [`@spatulox/simplediscordbot`](https://www.npmjs.com/package/@spatulox/simplediscordbot) | `Bot` (auto-login + logs), `ComponentManager` (Components V2), `ButtonManager`… |
+| [`@spatulox/discord-module`](https://www.npmjs.com/package/@spatulox/discord-module) | `InteractionsManager`: routes `/roll`, `/info` and the "Reroll" button |
+| [`@spatulox/discord-interaction-manager`](https://www.npmjs.com/package/@spatulox/discord-interaction-manager) | `dim` CLI: deploys the commands to Discord |
+| [`@spatulox/utils`](https://www.npmjs.com/package/@spatulox/utils) | `Time` (rate limit durations) |
 
-## Utilisation
+## Usage
 
 ```
-/roll formule:<formule> [prive:<vrai|faux>]
+/roll formula:<formula> [private:<True|False>]
 /info
 ```
 
-`/info` affiche (en privé) le mode d'emploi : notation, filtres par valeur de face (`kh3`, `kl3`, `dh3`, `dl3`, `k<3`…), lecture du résultat et limites.
+`/info` shows (privately) how to use the bot: notation, face value filters (`kh3`, `kl3`, `dh3`, `dl3`, `k<3`…),
+how to read a result, and the limits.
 
-| Formule | Signification |
+| Formula | Meaning |
 |---|---|
-| `1d20+5` | un d20, plus 5 |
-| `d20` | équivalent à `1d20` |
-| `3d6+1d4-2` | plusieurs termes, additionnés ou soustraits |
-| `d%` | un d100 |
-| `6d6kl3` | garde les dés qui font **3 ou moins** (*keep low*) |
-| `4d6kh3` | garde les dés qui font **3 ou plus** (*keep high*) |
-| `4d6dl2` | retire les dés qui font **2 ou moins** (*drop low*) |
-| `3d8dh7` | retire les dés qui font **7 ou plus** (*drop high*) |
-| `5d6k<3` | garde les dés dont la face est < 3 (aussi `<=`, `>`, `>=`, `=`) |
+| `1d20+5` | one d20, plus 5 |
+| `d20` | same as `1d20` |
+| `3d6+1d4-2` | several terms, added or subtracted |
+| `d%` | one d100 |
+| `6d6kl3` | keeps the dice showing **3 or less** (*keep low*) |
+| `4d6kh3` | keeps the dice showing **3 or more** (*keep high*) |
+| `4d6dl2` | removes the dice showing **2 or less** (*drop low*) |
+| `3d8dh7` | removes the dice showing **7 or more** (*drop high*) |
+| `5d6k<3` | keeps the dice whose face is < 3 (also `<=`, `>`, `>=`, `=`) |
 
-Les filtres portent sur la **valeur de la face** de chaque dé, pas sur un nombre de dés : `6d6kl3` sur
-`[1] [5] [3] [3] [6] [2]` garde `[1] [3] [3] [2]`, soit les 4 dés qui font 3 ou moins. Le nombre de dés
-gardés varie donc d'un lancer à l'autre, et peut être nul : le groupe vaut alors 0. Un seul filtre par
-groupe de dés, et la valeur est obligatoire (`kh` seul est refusé).
+Filters apply to the **face value** of each die, not to a number of dice: `6d6kl3` on
+`[1] [5] [3] [3] [6] [2]` keeps `[1] [3] [3] [2]`, the 4 dice showing 3 or less. The number of kept dice
+therefore changes from one roll to the next, and can be zero: the group is then worth 0. One filter per
+group of dice, and the value is required (`kh` alone is rejected).
 
-Le résultat est un message en **Components V2** : un en-tête avec la formule et l'avatar de celui qui lance,
-puis le **tapis de jeu** (les dés qui comptent, une ligne par terme), puis le total des dés, les modificateurs
-et le total final, avec le bouton **🎲 Relancer** à côté. Quand un groupe de dés a un filtre, un mini tapis
-en dessous montre tous les dés lancés et le total sans filtre :
+The result is a **Components V2** message: a header with the formula and the avatar of whoever rolled, then
+the **game mat** (the dice that count, one line per term), then the dice total, the modifiers and the final
+total, with the **🎲 Reroll** button next to it. When a group of dice has a filter, a mini mat below shows
+every die rolled and the total without filter:
 
 ````
 ### 🎲 2d20kh10+1d4+3                         [avatar]
--# Lancé par Spatulox
+-# Rolled by Spatulox
 ─────────────────────────
 ```
 2d20kh10  [15]
 +1d4      [ 3]
 ```
-Total des dés : 18
-Modificateurs : +3
-# Total : 21                              [🎲 Relancer]
+Dice total: 18
+Modifiers: +3
+# Total: 21                                 [🎲 Reroll]
 ─────────────────────────
--# Tous les dés, sans filtre :
+-# All dice, no filter:
 -# 2d20  [15] [ 7]
 -# +1d4  [ 3]
--# Total sans filtre : 28
+-# Total without filter: 28
 ─────────────────────────
-Dés correspondant au filtre
-2d20kh10 garde les dés ≥ 10 → [15]
+Dice matching filter
+2d20kh10 keeps dice ≥ 10 → [15]
 ````
 
-Le champ **Dés correspondant au filtre** explique chaque filtre et liste les dés qu'il vise : les dés gardés
-pour `kh` / `kl` / `k…`, les dés retirés pour `dh` / `dl`.
+The **Dice matching filter** section explains each filter and lists the dice it targets: the dice kept by
+`kh` / `kl` / `k…`, the dice removed by `dh` / `dl`.
 
-- **`prive`** fait un lancer secret : seul toi vois le résultat.
-- Le bouton **🎲 Relancer**, à côté du total, relance la même formule pour celui qui clique, avec la même visibilité.
-- Limites : 80 caractères, 100 dés par terme, 200 dés au total, de 2 à 1000 faces, 20 termes.
-  Chaque utilisateur peut faire 5 lancers par tranche de 10 secondes.
+- **`private`** makes a secret roll: only you see the result.
+- The **🎲 Reroll** button, next to the total, rolls the same formula again for whoever clicks it, with the same visibility.
+- Limits: 80 characters, 100 dice per term, 200 dice in total, 2 to 1000 sides, 20 terms.
+  Each user can roll 5 times every 10 seconds.
 
-## Installation
+## Setup
 
 ```bash
 npm install
 cp .env.example .env
 ```
 
-Puis remplis `.env` :
+Then fill in `.env`:
 
-| Variable | Valeur |
+| Variable | Value |
 |---|---|
-| `DISCORD_BOT_TOKEN` | le token du bot ([Developer Portal](https://discord.com/developers/applications) → Bot) |
-| `DISCORD_BOT_DEV` | `true` = commande `/roll_dev` (`handler/commands_dev/`), sinon `/roll` (`handler/commands/`) |
-| `DISCORD_INTERACTION_FOLDER` | `./handler` (à laisser) |
+| `DISCORD_BOT_TOKEN` | the bot token ([Developer Portal](https://discord.com/developers/applications) → Bot) |
+| `DISCORD_BOT_DEV` | `true` = `/roll_dev` and `/info_dev` (`handler/commands_dev/`), otherwise `/roll` and `/info` (`handler/commands/`) |
+| `DISCORD_INTERACTION_FOLDER` | `./handler` (leave as is) |
 
-Le bot n'utilise que l'intent `Guilds` : aucun intent privilégié à activer dans le portail.
+The bot only uses the `Guilds` intent: no privileged intent to enable in the portal.
 
-## Déployer la commande `/roll`
+## Deploying the commands
 
 ```bash
 npx dim
 ```
 
-**Manage Interactions** → **Command Manager** → **Global** → déploie `roll` et `info` (ou `roll_dev` et `info_dev` si
-`DISCORD_BOT_DEV=true`). `dim` écrit l'ID attribué par Discord dans le JSON : commite-le, les mises à jour
-s'appuient dessus.
+**Manage Interactions** → **Command Manager** → **Global** → deploy `roll` and `info` (or `roll_dev` and `info_dev`
+when `DISCORD_BOT_DEV=true`). `dim` writes the id Discord assigned into the JSON file: commit it, updates rely on it.
 
-La commande est déclarée pour une installation sur un serveur **et** sur ton compte
-(`integration_types: [0, 1]`). Elle est utilisable sur les serveurs, en MP avec le bot et dans les MP de groupe
-(`contexts: [0, 1, 2]`).
+The commands are declared for both a server install **and** a user install (`integration_types: [0, 1]`). They can
+be used in servers, in DMs with the bot and in group DMs (`contexts: [0, 1, 2]`).
 
-## Lancer le bot
+## Running the bot
 
-### En local (développement)
+### Locally (development)
 
 ```bash
-npm run dev     # nodemon : recompile et relance à chaque modification de src/
-npm start       # build puis lancement de dist/
-npm test        # tests du parseur et du moteur de dés (node:test)
+npm run dev     # nodemon: recompiles and restarts on every change in src/
+npm start       # build, then run dist/
+npm test        # parser, dice engine and message tests (node:test)
 ```
 
-> Lance toujours depuis la racine du repo : `.env` et `handler/` sont résolus depuis le dossier courant.
+> Always run from the repository root: `.env` and `handler/` are resolved from the current directory.
 
-### Avec Docker (démarrage automatique avec le PC)
+### With Docker (starts with the machine)
 
 ```bash
 docker compose up -d --build
 ```
 
-- `restart: unless-stopped` : le conteneur redémarre s'il plante et quand Docker démarre.
-- Si la connexion à Discord échoue (par exemple réseau pas encore prêt au boot), le bot s'arrête avec le code 1
-  et Docker le relance.
-- Pour que Docker démarre avec la machine (Linux) :
+- `restart: unless-stopped`: the container restarts when it crashes and when Docker starts.
+- If connecting to Discord fails (for instance the network is not ready yet at boot), the bot exits with code 1
+  and Docker restarts it.
+- To start Docker with the machine (Linux):
 
   ```bash
   sudo systemctl enable docker
   ```
 
-  Sous Windows/macOS, active « Start Docker Desktop when you sign in » : le bot démarre alors à l'ouverture de session.
+  On Windows / macOS, enable "Start Docker Desktop when you sign in": the bot then starts when you log in.
 
-Commandes utiles :
+Useful commands:
 
 ```bash
-docker compose logs -f       # suivre les logs
-docker compose up -d --build # reconstruire après une modification
-docker compose down          # arrêter
+docker compose logs -f       # follow the logs
+docker compose up -d --build # rebuild after a change
+docker compose down          # stop
 ```
 
-## Structure
+## Layout
 
 ```
 handler/
-  commands/                 roll.json, info.json (prod), déployés par `dim`
+  commands/                 roll.json, info.json (prod), deployed by `dim`
   commands_dev/             roll_dev, info_dev (dev)
 src/
-  index.ts                  point d'entrée : crée le Bot et enregistre les interactions
-  client.ts                 client discord.js (intent Guilds)
+  index.ts                  entry point: builds the Bot and registers the interactions
+  client.ts                 discord.js client (Guilds intent)
   dice/
-    parser.ts               formule → termes (+ limites et erreurs)
-    roller.ts               tirage (crypto.randomInt), filtres
-    format.ts               message du résultat en Components V2 (tapis de jeu) + bouton « Relancer »
-    reply.ts                parse + tire + répond (partagé par /roll et le bouton)
+    parser.ts               formula → terms (+ limits and errors)
+    roller.ts               rolls (crypto.randomInt), filters
+    format.ts               result message in Components V2 (game mat) + "Reroll" button
+    reply.ts                parse + roll + reply (shared by /roll and the button)
     *.test.ts               tests
-  test/components.ts        aides de test pour les Components V2
+  test/components.ts        test helpers for Components V2
   interactions/
-    commands/roll.ts        handler de /roll
-    commands/info.ts        handler de /info (mode d'emploi)
-    buttons/reroll.ts       handler du bouton (customId `dice_reroll|<p|s>|<formule>`)
+    commands/roll.ts        /roll handler
+    commands/info.ts        /info handler (how to use)
+    buttons/reroll.ts       button handler (customId `dice_reroll|<p|s>|<formula>`)
   utils/                    HandlersPath, RegisterInteractions, RegisterModules, rateLimiter
 Dockerfile
 docker-compose.yml

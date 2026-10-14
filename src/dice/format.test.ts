@@ -31,9 +31,9 @@ describe("game mat texts", () => {
     it("shows the mat, the dice total, the modifiers and the total", () => {
         const description = describeRoll("2d6+1d4-2", 3, 5, 4);
         assert.match(description, /^```\n2d6   \[3\] \[5\]  = 8\n\+1d4  \[4\]\n```/);
-        assert.match(description, /Total des dés : \*\*12\*\*/);
-        assert.match(description, /Modificateurs : \*\*-2\*\*/);
-        assert.match(description, /# Total : 10/);
+        assert.match(description, /Dice total: \*\*12\*\*/);
+        assert.match(description, /Modifiers: \*\*-2\*\*/);
+        assert.match(description, /# Total: 10/);
     });
 
     it("pads the dice to the widest die of the roll", () => {
@@ -42,7 +42,7 @@ describe("game mat texts", () => {
 
     it("hides the modifiers line and the mini mat when they are not needed", () => {
         const description = describeRoll("3d6", 4, 1, 6);
-        assert.doesNotMatch(description, /Modificateurs/);
+        assert.doesNotMatch(description, /Modifiers/);
         assert.doesNotMatch(description, /-#/);
     });
 
@@ -52,25 +52,25 @@ describe("game mat texts", () => {
 
         assert.match(main!, /4d6kh3  \[6\] \[5\]  = 11/);
         assert.doesNotMatch(main!, /\[1\]|\[2\]/);
-        assert.match(main!, /# Total : 13/);
+        assert.match(main!, /# Total: 13/);
 
         assert.match(mini!, /-# `4d6  \[2\] \[6\] \[1\] \[5\]`/);
-        assert.match(mini!, /-# Total sans filtre : 16/);
+        assert.match(mini!, /-# Total without filter: 16/);
     });
 
     it("applies face value filters on the mat, even when no die matches", () => {
         const description = describeRoll("5d6k<=3+1", 6, 4, 5, 1, 3);
         assert.match(description, /5d6k<=3  \[1\] \[3\]  = 4/);
-        assert.match(description, /# Total : 5/);
+        assert.match(description, /# Total: 5/);
         assert.match(description, /-# `5d6  \[6\] \[4\] \[5\] \[1\] \[3\]`/);
 
-        assert.match(describeRoll("2d6k>4", 1, 2), /2d6k>4  aucun dé\n/);
+        assert.match(describeRoll("2d6k>4", 1, 2), /2d6k>4  no dice\n/);
     });
 
     it("keeps the sign of negative dice terms", () => {
         const description = describeRoll("1d20-1d6kh1", 10, 2);
         assert.match(description, /-1d6kh1  \[ 2\]/);
-        assert.match(description, /Total des dés : \*\*8\*\*/);
+        assert.match(description, /Dice total: \*\*8\*\*/);
     });
 });
 
@@ -80,26 +80,26 @@ describe("buildFilterField", () => {
     });
 
     it("lists the dice kept by kh / kl", () => {
-        assert.equal(buildFilterField(rollWith("6d6kl3", [1, 5, 3, 3, 6, 2])), "`6d6kl3` garde les dés ≤ 3 → `[1] [3] [3] [2]`");
-        assert.equal(buildFilterField(rollWith("4d6kh3", [2, 6, 1, 5])), "`4d6kh3` garde les dés ≥ 3 → `[6] [5]`");
+        assert.equal(buildFilterField(rollWith("6d6kl3", [1, 5, 3, 3, 6, 2])), "`6d6kl3` keeps dice ≤ 3 → `[1] [3] [3] [2]`");
+        assert.equal(buildFilterField(rollWith("4d6kh3", [2, 6, 1, 5])), "`4d6kh3` keeps dice ≥ 3 → `[6] [5]`");
     });
 
     it("lists the dice removed by dh / dl", () => {
-        assert.equal(buildFilterField(rollWith("4d6dl2", [3, 1, 2, 6])), "`4d6dl2` retire les dés ≤ 2 → `[1] [2]`");
-        assert.equal(buildFilterField(rollWith("5d8dh7", [8, 2, 5, 7, 1])), "`5d8dh7` retire les dés ≥ 7 → `[8] [7]`");
+        assert.equal(buildFilterField(rollWith("4d6dl2", [3, 1, 2, 6])), "`4d6dl2` removes dice ≤ 2 → `[1] [2]`");
+        assert.equal(buildFilterField(rollWith("5d8dh7", [8, 2, 5, 7, 1])), "`5d8dh7` removes dice ≥ 7 → `[8] [7]`");
     });
 
     it("describes face value filters", () => {
-        assert.equal(buildFilterField(rollWith("5d6k<=3", [6, 4, 5, 1, 3])), "`5d6k<=3` garde les dés ≤ 3 → `[1] [3]`");
-        assert.equal(buildFilterField(rollWith("6d6k>=5", [5, 2, 6, 6, 1, 4])), "`6d6k>=5` garde les dés ≥ 5 → `[5] [6] [6]`");
-        assert.equal(buildFilterField(rollWith("3d6k=6", [1, 2, 3])), "`3d6k=6` garde les dés = 6 → aucun dé");
+        assert.equal(buildFilterField(rollWith("5d6k<=3", [6, 4, 5, 1, 3])), "`5d6k<=3` keeps dice ≤ 3 → `[1] [3]`");
+        assert.equal(buildFilterField(rollWith("6d6k>=5", [5, 2, 6, 6, 1, 4])), "`6d6k>=5` keeps dice ≥ 5 → `[5] [6] [6]`");
+        assert.equal(buildFilterField(rollWith("3d6k=6", [1, 2, 3])), "`3d6k=6` keeps dice = 6 → no dice");
     });
 
     it("has one line per filtered term", () => {
         const field = buildFilterField(rollWith("2d20kh10+1d4+4d6dl1", [3, 18, 2, 5, 1, 4, 6]));
         assert.deepEqual(field?.split("\n"), [
-            "`2d20kh10` garde les dés ≥ 10 → `[18]`",
-            "`4d6dl1` retire les dés ≤ 1 → `[1]`"
+            "`2d20kh10` keeps dice ≥ 10 → `[18]`",
+            "`4d6dl1` removes dice ≤ 1 → `[1]`"
         ]);
     });
 });
@@ -113,9 +113,9 @@ describe("buildRollContainer", () => {
     it("shows the header, the mat, the totals and the reroll button", () => {
         const {texts, container} = build(rollWith("2d6+3", [4, 5]));
 
-        assert.match(texts[0]!, /^### 🎲 2d6\+3\n-# Lancé par \*\*Testeur\\_\\\*du\\\*\\_dé\*\*$/);
+        assert.match(texts[0]!, /^### 🎲 2d6\+3\n-# Rolled by \*\*Testeur\\_\\\*du\\\*\\_dé\*\*$/);
         assert.ok(texts.some(text => text.startsWith("```\n2d6")));
-        assert.ok(texts.some(text => text.includes("# Total : 12")));
+        assert.ok(texts.some(text => text.includes("# Total: 12")));
 
         const section = container.toJSON().components.find(component =>
             component.type === ComponentType.Section && component.accessory.type === ComponentType.Button);
@@ -130,12 +130,12 @@ describe("buildRollContainer", () => {
     });
 
     it("adds the mini mat and the filter list only with a filter", () => {
-        assert.doesNotMatch(build(rollWith("3d6", [1, 2, 3])).json, /sans filtre|Dés correspondant/);
+        assert.doesNotMatch(build(rollWith("3d6", [1, 2, 3])).json, /without filter|no filter|Dice matching/);
 
         const {texts} = build(rollWith("6d6kl3", [1, 5, 3, 3, 6, 2]));
-        assert.ok(texts.some(text => text.startsWith("-# Tous les dés, sans filtre")));
+        assert.ok(texts.some(text => text.startsWith("-# All dice, no filter")));
         assert.ok(texts.includes(`__**${FILTER_FIELD_NAME}**__`));
-        assert.ok(texts.includes("`6d6kl3` garde les dés ≤ 3 → `[1] [3] [3] [2]`"));
+        assert.ok(texts.includes("`6d6kl3` keeps dice ≤ 3 → `[1] [3] [3] [2]`"));
     });
 
     it("stays under Discord's text limit on the biggest rolls", () => {

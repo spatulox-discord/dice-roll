@@ -5,8 +5,8 @@ import {ActivityType} from "discord.js";
  * Activities randomly picked by Bot.setRandomActivity().
  */
 export const activities: RandomBotActivity = [
-    {type: ActivityType.Playing, message: "aux dés 🎲"},
-    {type: ActivityType.Watching, message: "les 20 naturels"},
+    {type: ActivityType.Playing, message: "with dice 🎲"},
+    {type: ActivityType.Watching, message: "for natural 20s"},
     {type: ActivityType.Listening, message: "/roll 1d20"},
-    {type: ActivityType.Competing, message: "un concours de lancers"}
+    {type: ActivityType.Competing, message: "a dice rolling contest"}
 ];

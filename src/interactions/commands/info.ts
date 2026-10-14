@@ -18,54 +18,54 @@ export async function info(interaction: ChatInputCommandInteraction) {
 
 export function buildInfoContainer(): ContainerBuilder {
     const container = ComponentManager.create({
-        title: "## 🎲 Dice Roll : mode d'emploi",
-        description: "Lance des dés avec `/roll formule:<formule>`. Ajoute `prive:vrai` pour un lancer secret, visible par toi seul.",
+        title: "## 🎲 Dice Roll: how to use",
+        description: "Roll dice with `/roll formula:<formula>`. Add `private:True` for a secret roll that only you can see.",
         separator: SeparatorSpacingSize.Small
     })
 
     return ComponentManager.fields(container, [
         {
-            name: "📝 Écrire une formule",
+            name: "📝 Writing a formula",
             value: [
-                "`1d20` : un dé à 20 faces (`d20` suffit)",
-                "`3d6` : trois dés à 6 faces, additionnés",
-                "`1d20+5` / `1d20-1` : un modificateur",
-                "`2d6+1d4-2` : plusieurs termes, additionnés ou soustraits",
-                "`d%` : un dé à 100 faces"
+                "`1d20`: one 20-sided die (`d20` works too)",
+                "`3d6`: three 6-sided dice, added together",
+                "`1d20+5` / `1d20-1`: a modifier",
+                "`2d6+1d4-2`: several terms, added or subtracted",
+                "`d%`: one 100-sided die"
             ].join("\n")
         },
         {
-            name: "🎯 Filtrer les dés",
+            name: "🎯 Filtering dice",
             value: [
-                "À coller juste après un groupe de dés. Le nombre qui suit est une **valeur de face**, pas un nombre de dés :",
-                "`kh` *keep high* : garde les dés ≥ valeur. `4d6kh3` garde les 3, 4, 5 et 6",
-                "`kl` *keep low* : garde les dés ≤ valeur. `6d6kl3` sur `[1] [5] [3] [3] [6] [2]` garde `[1] [3] [3] [2]`",
-                "`dh` *drop high* : retire les dés ≥ valeur. `3d8dh7` retire les 7 et les 8",
-                "`dl` *drop low* : retire les dés ≤ valeur. `4d6dl2` retire les 1 et les 2",
-                "`k` + comparateur (`<` `<=` `>` `>=` `=`) : `5d6k<3`, `6d6k=6`",
-                "Un seul filtre par groupe. Si aucun dé ne correspond, le groupe vaut 0"
+                "Put it right after a group of dice. The number that follows is a **face value**, not a number of dice:",
+                "`kh` *keep high*: keeps the dice ≥ value. `4d6kh3` keeps the 3s, 4s, 5s and 6s",
+                "`kl` *keep low*: keeps the dice ≤ value. `6d6kl3` on `[1] [5] [3] [3] [6] [2]` keeps `[1] [3] [3] [2]`",
+                "`dh` *drop high*: removes the dice ≥ value. `3d8dh7` removes the 7s and 8s",
+                "`dl` *drop low*: removes the dice ≤ value. `4d6dl2` removes the 1s and 2s",
+                "`k` + comparison (`<` `<=` `>` `>=` `=`): `5d6k<3`, `6d6k=6`",
+                "One filter per group. If no die matches, the group is worth 0"
             ].join("\n")
         },
         {
-            name: "📊 Lire le résultat",
+            name: "📊 Reading the result",
             value: [
-                "**Tapis de jeu** : les dés qui comptent, une ligne par groupe de dés",
-                "**Total des dés**, puis les **modificateurs** et le **total** final",
-                "Avec un filtre : un mini tapis montre tous les dés lancés et le total sans filtre,",
-                `et le champ **${FILTER_FIELD_NAME}** liste les dés gardés (\`kh\`/\`kl\`/\`k…\`) ou retirés (\`dh\`/\`dl\`)`
+                "**Game mat**: the dice that count, one line per group of dice",
+                "**Dice total**, then the **modifiers** and the final **total**",
+                "With a filter: a mini mat shows every die rolled and the total without filter,",
+                `and the **${FILTER_FIELD_NAME}** section lists the dice kept (\`kh\`/\`kl\`/\`k…\`) or removed (\`dh\`/\`dl\`)`
             ].join("\n")
         },
         {
-            name: "🔁 Relancer",
-            value: "Le bouton **🎲 Relancer**, à côté du total, relance la même formule pour toi, avec la même visibilité (public ou secret)."
+            name: "🔁 Reroll",
+            value: "The **🎲 Reroll** button, next to the total, rolls the same formula again for you, with the same visibility (public or secret)."
         },
         {
-            name: "⚠️ Limites",
+            name: "⚠️ Limits",
             value: [
-                `${LIMITS.formulaLength} caractères et ${LIMITS.maxTerms} termes par formule`,
-                `${LIMITS.dicePerTerm} dés par groupe, ${LIMITS.totalDice} dés au total`,
-                `De ${LIMITS.minSides} à ${LIMITS.maxSides} faces, modificateurs jusqu'à ${LIMITS.maxConstant}`,
-                `${RATE_LIMIT.rolls} lancers toutes les ${RATE_LIMIT.windowMs / 1000} secondes par personne`
+                `${LIMITS.formulaLength} characters and ${LIMITS.maxTerms} terms per formula`,
+                `${LIMITS.dicePerTerm} dice per group, ${LIMITS.totalDice} dice in total`,
+                `${LIMITS.minSides} to ${LIMITS.maxSides} sides, modifiers up to ${LIMITS.maxConstant}`,
+                `${RATE_LIMIT.rolls} rolls every ${RATE_LIMIT.windowMs / 1000} seconds per person`
             ].join("\n")
         }
     ])
