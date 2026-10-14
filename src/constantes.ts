@@ -11,14 +11,12 @@ import {BotEnv} from "@spatulox/simplediscordbot";
 
 const DEV_CHANNELS = {
     log: "your-dev-log-channel-id",
-    error: "your-dev-error-channel-id",
-    module_ui: "your-dev-module-panel-channel-id"
+    error: "your-dev-error-channel-id"
 } as const;
 
 const PROD_CHANNELS = {
     log: "your-log-channel-id",
-    error: "your-error-channel-id",
-    module_ui: "your-module-panel-channel-id"
+    error: "your-error-channel-id"
 } as const;
 
 export const CHANNELS = BotEnv.dev ? DEV_CHANNELS : PROD_CHANNELS;

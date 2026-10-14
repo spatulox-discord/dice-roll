@@ -1,0 +1,15 @@
+{
+  "name": "info_dev",
+  "type": 1,
+  "description": "How to write a dice formula (kh, kl, dh, dl…) and read the result",
+  "integration_types": [
+    0,
+    1
+  ],
+  "contexts": [
+    0,
+    1,
+    2
+  ],
+  "command_scope": "global"
+}

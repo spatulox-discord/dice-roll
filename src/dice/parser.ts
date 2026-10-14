@@ -1,0 +1,197 @@
+/**
+ * Parses a tabletop dice formula into terms.
+ *
+ * Supported : `NdS` (N defaults to 1), `d%` (= d100), constants, `+` / `-` between terms,
+ * and one filter per dice term, always on the face value of each die :
+ * - `kh` / `kl` + value : keeps the dice >= / <= the value, e.g. `6d6kl3` keeps every die showing 3 or less
+ * - `dh` / `dl` + value : removes the dice >= / <= the value
+ * - `k` + `<` `<=` `>` `>=` or `=` + value, e.g. `5d6k<3`
+ * Examples : `1d20+5`, `4d6kh3`, `2d20kl10 + 1d4 - 1`, `6d6k>=5`, `d%`.
+ */
+
+export const LIMITS = {
+    /** Keeps the formula small enough to fit in a button customId */
+    formulaLength: 80,
+    dicePerTerm: 100,
+    totalDice: 200,
+    minSides: 2,
+    maxSides: 1000,
+    maxConstant: 10_000,
+    maxTerms: 20
+} as const;
+
+export type KeepMode = 'kh' | 'kl' | 'dh' | 'dl' | 'k';
+
+export type CompareOperator = '<' | '<=' | '>' | '>=' | '=';
+
+/**
+ * Keeps the dice whose face matches `operator value`, however many they are.
+ * `mode` is the syntax used : kh / kl / dh / dl are shortcuts for a comparison.
+ */
+export type KeepRule = {
+    mode: KeepMode
+    operator: CompareOperator
+    value: number
+};
+
+/** Comparison that the dice must match to be KEPT (dh / dl remove the dice >= / <= the value) */
+const SHORTCUT_OPERATORS: Record<Exclude<KeepMode, 'k'>, CompareOperator> = {
+    kh: '>=',
+    kl: '<=',
+    dh: '<',
+    dl: '>'
+};
+
+export type DiceTerm = {
+    kind: 'dice'
+    sign: 1 | -1
+    count: number
+    sides: number
+    keep: KeepRule | null
+};
+
+export type ConstantTerm = {
+    kind: 'constant'
+    sign: 1 | -1
+    value: number
+};
+
+export type Term = DiceTerm | ConstantTerm;
+
+export type DiceFormula = {
+    terms: Term[]
+    /** Canonical form of the formula, e.g. "4d6kh3+2" */
+    normalized: string
+};
+
+export class DiceParseError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'DiceParseError';
+    }
+}
+
+const TERM_REGEX = /([+-])?(?:(\d*)d(\d+|%)(?:(kh|kl|dh|dl)(\d+)|k(<=|>=|<|>|=)(\d+))?|(\d+))/y;
+
+export function parseFormula(input: string): DiceFormula {
+    const formula = input.replace(/\s+/g, '').toLowerCase();
+
+    if (!formula) {
+        throw new DiceParseError('The formula is empty.');
+    }
+    if (formula.length > LIMITS.formulaLength) {
+        throw new DiceParseError(`The formula is too long (${LIMITS.formulaLength} characters max).`);
+    }
+
+    const terms: Term[] = [];
+    let totalDice = 0;
+    TERM_REGEX.lastIndex = 0;
+
+    while (TERM_REGEX.lastIndex < formula.length) {
+        const start = TERM_REGEX.lastIndex;
+        const match = TERM_REGEX.exec(formula);
+
+        if (!match) {
+            throw new DiceParseError(`Invalid formula near \`${formula.slice(start)}\`. Example: \`2d20+3\`, \`4d6kh3\`.`);
+        }
+
+        const [, signChar, countStr, sidesStr, shortcut, shortcutValue, operator, operatorValue, constantStr] = match;
+
+        if (terms.length > 0 && !signChar) {
+            throw new DiceParseError(`Missing a \`+\` or a \`-\` before \`${match[0]}\`.`);
+        }
+        if (terms.length >= LIMITS.maxTerms) {
+            throw new DiceParseError(`Too many terms (${LIMITS.maxTerms} max).`);
+        }
+
+        const sign = signChar === '-' ? -1 : 1;
+
+        if (constantStr !== undefined) {
+            const value = parseInt(constantStr, 10);
+            if (value > LIMITS.maxConstant) {
+                throw new DiceParseError(`The modifier \`${value}\` is too big (${LIMITS.maxConstant} max).`);
+            }
+            terms.push({kind: 'constant', sign, value});
+            continue;
+        }
+
+        const count = countStr ? parseInt(countStr, 10) : 1;
+        const sides = sidesStr === '%' ? 100 : parseInt(sidesStr!, 10);
+
+        if (count < 1) {
+            throw new DiceParseError('You must roll at least one die.');
+        }
+        if (count > LIMITS.dicePerTerm) {
+            throw new DiceParseError(`Too many dice in \`${match[0]}\` (${LIMITS.dicePerTerm} max).`);
+        }
+        if (sides < LIMITS.minSides || sides > LIMITS.maxSides) {
+            throw new DiceParseError(`A die must have between ${LIMITS.minSides} and ${LIMITS.maxSides} sides.`);
+        }
+
+        totalDice += count;
+        if (totalDice > LIMITS.totalDice) {
+            throw new DiceParseError(`Too many dice in total (${LIMITS.totalDice} max).`);
+        }
+
+        let keep: KeepRule | null = null;
+        if (shortcut) {
+            const mode = shortcut as Exclude<KeepMode, 'k'>;
+            keep = {mode, operator: SHORTCUT_OPERATORS[mode], value: parseInt(shortcutValue!, 10)};
+        } else if (operator) {
+            keep = {mode: 'k', operator: operator as CompareOperator, value: parseInt(operatorValue!, 10)};
+        }
+        if (keep && !Array.from({length: sides}, (_, face) => face + 1).some(face => matchesValue(face, keep!))) {
+            throw new DiceParseError(`\`${match[0]}\`: this filter leaves no possible face on a d${sides}.`);
+        }
+
+        terms.push({kind: 'dice', sign, count, sides, keep});
+    }
+
+    if (!terms.some(term => term.kind === 'dice')) {
+        throw new DiceParseError('The formula must contain at least one die (e.g. `1d20`).');
+    }
+
+    // "d6kh1" becomes "1d6kh1" : the canonical form can be longer than the input
+    const normalized = formatFormula(terms);
+    if (normalized.length > LIMITS.formulaLength) {
+        throw new DiceParseError(`The formula is too long (${LIMITS.formulaLength} characters max).`);
+    }
+
+    return {terms, normalized};
+}
+
+export function formatTerm(term: Term): string {
+    if (term.kind === 'constant') {
+        return `${term.value}`;
+    }
+    return `${term.count}d${term.sides}${term.keep ? formatKeepRule(term.keep) : ''}`;
+}
+
+export function formatKeepRule(keep: KeepRule): string {
+    return keep.mode === 'k' ? `k${keep.operator}${keep.value}` : `${keep.mode}${keep.value}`;
+}
+
+/** True when a die showing `face` is kept by the rule */
+export function matchesValue(face: number, {operator, value}: KeepRule): boolean {
+    switch (operator) {
+        case '<':
+            return face < value;
+        case '<=':
+            return face <= value;
+        case '>':
+            return face > value;
+        case '>=':
+            return face >= value;
+        case '=':
+            return face === value;
+    }
+}
+
+function formatFormula(terms: Term[]): string {
+    return terms
+        .map((term, index) => {
+            const sign = term.sign === -1 ? '-' : index === 0 ? '' : '+';
+            return `${sign}${formatTerm(term)}`;
+        })
+        .join('');
+}

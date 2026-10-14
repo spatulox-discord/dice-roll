@@ -1,178 +1,223 @@
-# Discord Bot Template
+# Dice Roll 🎲
 
-[![discord.js](https://img.shields.io/github/package-json/dependency-version/Spatulox/DiscordBotTemplate/discord.js?logo=discord&logoColor=white&label=discord.js)](https://discord.js.org/)
-[![simplediscordbot](https://img.shields.io/github/package-json/dependency-version/Spatulox/DiscordBotTemplate/@spatulox%2Fsimplediscordbot?label=simplediscordbot)](https://github.com/spatulox-discord/SimpleDiscordBot)
-
-A ready-to-use Discord bot template built on
-[SimpleDiscordBot](https://github.com/spatulox-discord/SimpleDiscordBot).
-
-The framework handles login, logging, modules, interactions and command
-deployment, so this repository only contains what is specific to *your* bot.
+Discord dice roller bot, built on
+[SimpleDiscordBot](https://github.com/spatulox-discord/SimpleDiscordBot) and the
+[DiscordBotTemplate](https://github.com/Spatulox/DiscordBotTemplate).
 
 | Package | Role |
 |---|---|
-| [`@spatulox/simplediscordbot`](https://www.npmjs.com/package/@spatulox/simplediscordbot) | `Bot` (auto-login + logs), `EmbedManager`, `GuildManager`, `Time`, `FileManager`, `DiscordRegex`… |
-| [`@spatulox/discord-module`](https://www.npmjs.com/package/@spatulox/discord-module) | `Module` / `ModuleManager` / `ModuleUI` (toggleable features) and `InteractionsManager` |
-| `dim` (bundled with the two above) | Interactive CLI that **generates** the `handler/*.json` interactions and deploys them to Discord |
+| [`@spatulox/simplediscordbot`](https://www.npmjs.com/package/@spatulox/simplediscordbot) | `Bot` (auto-login + logs), `ComponentManager` (Components V2), `ButtonManager`… |
+| [`@spatulox/discord-module`](https://www.npmjs.com/package/@spatulox/discord-module) | `InteractionsManager`: routes `/roll`, `/info` and the "Reroll" button |
+| [`@spatulox/discord-interaction-manager`](https://www.npmjs.com/package/@spatulox/discord-interaction-manager) | `dim` CLI: deploys the commands to Discord |
+| [`@spatulox/utils`](https://www.npmjs.com/package/@spatulox/utils) | `Time` (rate limit durations) |
 
-The full documentation lives in the [wiki](../../wiki).
+## Quick start
 
-## Compatibility
+### Step 0: Create the bot on the Discord Dev Portal
 
-| Template | discord.js | `@spatulox/simplediscordbot` | Node |
-|---|---|---|---|
-| current | 14.x | 4.x | >= 18.17 |
+Resources:
 
-The badges above read `package.json` straight from the repository, so they
-always show what this branch actually depends on — nothing to keep in sync by
-hand.
+- [Discord Dev Portal](https://discord.com/developers/applications)
+- [Youtube video about the dev portal](https://youtu.be/zrNloK9b1ro)
 
-A new discord.js major means a new template major. The
-[releases](../../releases) say what changed, and each one is tagged:
-`git checkout <tag>` gets you back the state that worked with the previous
-major.
+1. **New Application**, give it a name.
+2. **Bot** tab → **Reset Token** → copy the token. Keep it secret: anyone with it controls your bot.
+   No privileged intent is needed, leave them off.
+3. **Installation** tab → in the default install settings, add the `applications.commands` and `bot`
+   scopes, then open the install link to add the bot to your server (or to your account, for a user install).
 
-### Upgrading from `@spatulox/simplediscordbot` 3.x
+### Step 1: Fill in the `.env`
 
-Only `DISCORD_BOT_DEV=true` (or `1`) enables the dev mode now — with 3.x, any
-non-empty value did, `false` included. Check your `.env` before deploying. The other
-breaking changes (`toInteractionEdit()` replaced by `toInteractionUpdate()`,
-`GuildManager.searchMember(guildId, memberId)`…) are listed in the
-[SimpleDiscordBot changelog](https://github.com/spatulox-discord/SimpleDiscordBot/blob/master/CHANGELOG.md).
+```bash
+git clone https://github.com/spatulox-discord/dice-roll.git
+cd dice-roll
+cp .env.example .env
+```
+
+Then put your token in `.env`, that's the only required value:
+
+```dotenv
+DISCORD_BOT_TOKEN=the-token-from-step-0
+```
+
+### Step 2: Deploy the commands (once)
+
+```bash
+npm install
+npx dim web
+```
+
+The **web UI** of `dim` (preferred) opens in your browser: pick the **Global** scope, then deploy `roll` and `info`
+from the **To deploy** list.
+
+Prefer the terminal? `npx dim` starts the same tool as a CLI: **Manage Interactions** → **Command Manager** →
+**Global** → deploy `roll` and `info`.
+
+See [Deploying the commands](#deploying-the-commands) for details.
+
+### Step 3: Start the bot
+
+```bash
+docker compose up -d --build
+```
+
+That's it: try `/roll dice:1d20+5` or `/info` on Discord. The container restarts on its own when it crashes
+and when Docker starts; to start Docker with the machine, see [With Docker](#with-docker-starts-with-the-machine).
+
+## Usage
+
+```
+/roll dice:<formula> [private:<True|False>]
+/info
+```
+
+`/info` shows (privately) how to use the bot: notation, face value filters (`kh3`, `kl3`, `dh3`, `dl3`, `k<3`…),
+how to read a result, and the limits.
+
+| Formula | Meaning |
+|---|---|
+| `1d20+5` | one d20, plus 5 |
+| `d20` | same as `1d20` |
+| `3d6+1d4-2` | several terms, added or subtracted |
+| `d%` | one d100 |
+| `6d6kl3` | keeps the dice showing **3 or less** (*keep low*) |
+| `4d6kh3` | keeps the dice showing **3 or more** (*keep high*) |
+| `4d6dl2` | removes the dice showing **2 or less** (*drop low*) |
+| `3d8dh7` | removes the dice showing **7 or more** (*drop high*) |
+| `5d6k<3` | keeps the dice whose face is < 3 (also `<=`, `>`, `>=`, `=`) |
+
+Filters apply to the **face value** of each die, not to a number of dice: `6d6kl3` on
+`[1] [5] [3] [3] [6] [2]` keeps `[1] [3] [3] [2]`, the 4 dice showing 3 or less. The number of kept dice
+therefore changes from one roll to the next, and can be zero: the group is then worth 0. One filter per
+group of dice, and the value is required (`kh` alone is rejected).
+
+The result is a **Components V2** message: a header with the formula and the avatar of whoever rolled, then
+the **game mat** (the dice that count, one line per term), then the dice total, the modifiers and the final
+total, with the **🎲 Reroll** button next to it. When a group of dice has a filter, a mini mat below shows
+every die rolled and the total without filter:
+
+````
+### 🎲 2d20kh10+1d4+3                         [avatar]
+-# Rolled by Spatulox
+─────────────────────────
+```
+2d20kh10  [15]
++1d4      [ 3]
+```
+Dice total: 18
+Modifiers: +3
+# Total: 21                                 [🎲 Reroll]
+─────────────────────────
+-# All dice, no filter:
+-# 2d20  [15] [ 7]
+-# +1d4  [ 3]
+-# Total without filter: 28
+─────────────────────────
+Dice matching filter
+2d20kh10 keeps dice ≥ 10 → [15]
+````
+
+The **Dice matching filter** section explains each filter and lists the dice it targets: the dice kept by
+`kh` / `kl` / `k…`, the dice removed by `dh` / `dl`.
+
+- **`private`** makes a secret roll: only you see the result.
+- The **🎲 Reroll** button, next to the total, rolls the same formula again for whoever clicks it, with the same visibility.
+- Limits: 80 characters, 100 dice per term, 200 dice in total, 2 to 1000 sides, 20 terms.
+  Each user can roll 5 times every 10 seconds.
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env   # then fill DISCORD_BOT_TOKEN and DISCORD_BOT_CLIENTID
+cp .env.example .env
 ```
 
-Then fill the channel and guild ids in `src/constantes.ts`.
+Then fill in `.env`:
 
-## Run
-
-```bash
-npm run dev     # nodemon + ts-node, restarts on every .ts change
-npm start       # build then run dist/
-```
-
-> Always run from the repository root : the `.env` and `handler/` paths are
-> resolved from the current working directory.
-
-## Manage the slash commands / context menus
-
-```bash
-npx dim
-```
-
-`dim` ([DiscordInteractionManager](https://github.com/spatulox-discord/DiscordInteractionManager))
-is an interactive CLI. **You never have to write the json by hand** — it
-generates it for you:
-
-```
-💠 Discord Interaction Manager CLI
-════════════════════════════════════════
-1. Manage Interactions      -> deploy / update / delete / list
-2. Generate Files           -> create a slash command or a context menu json
-3. Help
-4. Exit
-```
-
-- **Generate Files** walks you through name, description, options, permissions
-  and scope, then writes the json into the right folder.
-- **Manage Interactions** deploys it to Discord, and writes the id Discord
-  assigned back into the file — commit that, it is what later updates target.
-- Listing can also pull the commands already registered on Discord back down
-  into json files, under `generated_commands/`.
-
-### Where the files go
-
-`dim` reads and writes `<DISCORD_INTERACTION_FOLDER>/<category>` and appends
-`_dev` when `DISCORD_BOT_DEV=true` — exactly the convention
-`src/utils/HandlersPath.ts` uses to read them back at runtime.
-
-Its default folder is `./handlers`; this template sets
-`DISCORD_INTERACTION_FOLDER=./handler` in `.env` to keep the singular name used
-by the rest of the project. Change either one, change both.
-
-### The fields it manages
-
-| Field | Who fills it |
+| Variable | Value |
 |---|---|
-| `name`, `description`, `options`, `contexts`… | you, through the generator |
-| `command_scope` | you, at generation time — `"global"` or `"guild"` |
-| `default_member_permissions_string` | you — an array of discord.js `PermissionFlagsBits` keys, e.g. `["ModerateMembers"]`, empty for everyone |
-| `default_member_permissions` | `dim`, computed from the field above |
-| `id` | `dim`, after the first deploy — a string when global, a `{guildId: id}` map when guild-scoped |
+| `DISCORD_BOT_TOKEN` | the bot token ([Developer Portal](https://discord.com/developers/applications) → Bot) |
+| `DISCORD_BOT_DEV` | optional: `true` = `/roll_dev` and `/info_dev` (`handlers/commands_dev/`). Absent = `/roll` and `/info` (`handlers/commands/`) |
 
-> Changing the scope of an existing interaction needs **both** `command_scope`
-> and `id` edited to the matching shape. A plain update will not do it.
+The command files live in `handlers/`, the default folder of `dim`: no `DISCORD_INTERACTION_FOLDER` needed.
 
-## Dev vs prod
+The bot only uses the `Guilds` intent: no privileged intent to enable in the portal.
 
-`DISCORD_BOT_DEV` drives two things at once:
+## Deploying the commands
 
-- `handler/commands_dev/` and `handler/context_menu_dev/` are loaded instead of
-  `handler/commands/` and `handler/context_menu/`. The `_dev` files declare a
-  different `name`, so your dev bot and your prod bot can live on Discord side
-  by side.
-- `src/constantes.ts` returns the DEV ids instead of the PROD ones.
+```bash
+npx dim web   # web UI (preferred)
+npx dim       # same tool, as a CLI
+```
 
-Only `DISCORD_BOT_DEV=true` (or `1`) means dev. Anything else — `false`, `0`,
-empty, absent — means production. The bot and the `dim` CLI follow the same
-rule.
+In the web UI, pick the **Global** scope and deploy `roll` and `info` from the **To deploy** list (or `roll_dev`
+and `info_dev` when `DISCORD_BOT_DEV=true`). After a change in a JSON file, the command shows up in the
+**To update** list. In the CLI: **Manage Interactions** → **Command Manager** → **Global**.
+
+`dim` writes the id Discord assigned into the JSON file: commit it, updates rely on it. The web UI is only
+served on `127.0.0.1`, and stops with the command (Ctrl+C).
+
+The commands are declared for both a server install **and** a user install (`integration_types: [0, 1]`). They can
+be used in servers, in DMs with the bot and in group DMs (`contexts: [0, 1, 2]`).
+
+## Running the bot
+
+### Locally (development)
+
+```bash
+npm run dev     # nodemon: recompiles and restarts on every change in src/
+npm start       # build, then run dist/
+npm test        # parser, dice engine and message tests (node:test)
+```
+
+> Always run from the repository root: `.env` and `handlers/` are resolved from the current directory.
+
+### With Docker (starts with the machine)
+
+```bash
+docker compose up -d --build
+```
+
+- `restart: unless-stopped`: the container restarts when it crashes and when Docker starts.
+- If connecting to Discord fails (for instance the network is not ready yet at boot), the bot exits with code 1
+  and Docker restarts it.
+- To start Docker with the machine (Linux):
+
+  ```bash
+  sudo systemctl enable docker
+  ```
+
+  On Windows / macOS, enable "Start Docker Desktop when you sign in": the bot then starts when you log in.
+
+Useful commands:
+
+```bash
+docker compose logs -f       # follow the logs
+docker compose up -d --build # rebuild after a change
+docker compose down          # stop
+```
 
 ## Layout
 
 ```
-handler/                  interaction manifests, generated + deployed by `dim`
-  commands/               slash commands (prod)
-  commands_dev/           slash commands (dev), different `name`
-  context_menu/           context menus (prod)
-  context_menu_dev/       context menus (dev)
+handlers/
+  commands/                 roll.json, info.json (prod), deployed by `dim`
+  commands_dev/             roll_dev, info_dev (dev)
 src/
-  index.ts                entry point : builds the Bot and registers everything
-  client.ts               the discord.js Client and its intents
-  constantes.ts           channel / guild ids, switched on DISCORD_BOT_DEV
-  activities.ts           activities randomly displayed by the bot
-  interactions/           the code behind each interaction
-    commands/ context-menu/ modal/ selectmenu/ buttons/
-  modules/                toggleable features listening to Discord events
-  utils/
-    HandlersPath.ts       loads handler json, dev/prod aware
-    RegisterInteractions.ts  maps interaction names -> functions
-    RegisterModules.ts    registers and enables the modules
-    rateLimiter.ts        per-user rate limit helper
+  index.ts                  entry point: builds the Bot and registers the interactions
+  client.ts                 discord.js client (Guilds intent)
+  dice/
+    parser.ts               formula → terms (+ limits and errors)
+    roller.ts               rolls (crypto.randomInt), filters
+    format.ts               result message in Components V2 (game mat) + "Reroll" button
+    reply.ts                parse + roll + reply (shared by /roll and the button)
+    *.test.ts               tests
+  test/components.ts        test helpers for Components V2
+  interactions/
+    commands/roll.ts        /roll handler
+    commands/info.ts        /info handler (how to use)
+    buttons/reroll.ts       button handler (customId `dice_reroll|<p|s>|<formula>`)
+  utils/                    HandlersPath, RegisterInteractions, RegisterModules, rateLimiter
+Dockerfile
+docker-compose.yml
 ```
-
-## Add a slash command
-
-1. `npx dim` -> **Generate Files** -> slash command. It writes
-   `handler/commands/mycommand.json` for you. Run it once with
-   `DISCORD_BOT_DEV=true` and once with `false` to get the `_dev` twin, giving the
-   dev one a different `name`.
-2. Add `'mycommand'` to `HANDLERS_PATHS.commands` in `src/utils/HandlersPath.ts`
-   — it is a typed whitelist, `Handlers.load` throws for anything missing.
-3. Write the handler in `src/interactions/commands/mycommand.ts`.
-4. Register it in `RegisterInteraction.slash()`:
-   ```ts
-   const json = await Handlers.load('commands', 'mycommand');
-   this.manager.registerSlash(json.name, mycommand)
-   ```
-5. `npx dim` -> **Manage Interactions** to deploy it to Discord.
-
-Buttons, modals and select menus follow the same pattern, minus the json
-(their name is the `customId` you set). `InteractionMatchType.START_WITH`
-lets one handler serve every `customId` sharing a prefix.
-
-## Add a module
-
-Extend `Module` (or `ModuleWithCache` for persistent state), declare the
-Discord events it listens to, and register it in `RegisterModules.init()`.
-Modules can be enabled/disabled live from the `ModuleUI` panel posted in the
-`module_ui` channel — see `src/modules/ExampleModule.ts`.
-
-## Multi-bot
-
-The `feat/multi-bot` branch holds the same template arranged for several bots
-running side by side from one repository, with a shared `src/share/` folder.

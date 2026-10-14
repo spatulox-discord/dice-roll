@@ -34,6 +34,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Test
+        run: npm test
+
       # The bot reads these at runtime, a typo would only show up in production
       - name: Validate the handler json files
         run: |
