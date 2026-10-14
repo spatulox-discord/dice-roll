@@ -42,6 +42,8 @@ async function main() {
             Bot.setRandomActivity(activities, Time.hour.HOUR_01.toMilliseconds())
         } catch (error) {
             Bot.log.error(`Failed to start the bot : ${error}`)
+            // Online without handlers is useless : exit so Docker restarts the bot
+            process.exit(1)
         }
     })
 
