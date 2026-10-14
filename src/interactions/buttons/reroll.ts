@@ -2,6 +2,7 @@ import {ButtonInteraction} from "discord.js";
 import {Bot, ComponentManager} from "@spatulox/simplediscordbot";
 import {replyWithRoll} from "../../dice/reply";
 import {buildErrorContainer, parseRerollId} from "../../dice/format";
+import {replyUnexpectedError} from "../../utils/replyUnexpectedError";
 
 /**
  * "Relancer" button under a roll : rolls the same formula again for whoever clicked,
@@ -18,5 +19,6 @@ export async function reroll(interaction: ButtonInteraction) {
         await replyWithRoll(interaction, payload.formula, payload.isPrivate)
     } catch (error) {
         Bot.log.error(`reroll button failed : ${error}`)
+        await replyUnexpectedError(interaction)
     }
 }

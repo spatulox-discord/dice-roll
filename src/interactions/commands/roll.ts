@@ -1,6 +1,7 @@
 import {ChatInputCommandInteraction} from "discord.js";
 import {Bot} from "@spatulox/simplediscordbot";
 import {replyWithRoll} from "../../dice/reply";
+import {replyUnexpectedError} from "../../utils/replyUnexpectedError";
 
 /**
  * /roll dice:<string> private:<boolean?>
@@ -13,5 +14,6 @@ export async function roll(interaction: ChatInputCommandInteraction) {
         await replyWithRoll(interaction, formula, isPrivate)
     } catch (error) {
         Bot.log.error(`roll command failed : ${error}`)
+        await replyUnexpectedError(interaction)
     }
 }
