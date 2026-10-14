@@ -22,6 +22,17 @@ async function main() {
     };
 
     const bot = new Bot(client, config);
+
+    // The client is built with captureRejections : a rejected listener (a handler that throws,
+    // an interaction with no handler...) is re-emitted as an "error" event, and Node kills the
+    // process when nobody listens to it
+    bot.client.on(Events.Error, (error) => {
+        Bot.log.error(`Discord client error : ${error}`)
+    })
+    process.on("unhandledRejection", (reason) => {
+        Bot.log.error(`Unhandled rejection : ${reason}`)
+    })
+
     bot.client.once(Events.ClientReady, async () => {
         try {
             // Modules first : an interaction may need a module instance
@@ -39,4 +50,7 @@ async function main() {
         process.exit(1)
     }
 }
-main()
+main().catch((error) => {
+    console.error(`Failed to start the bot : ${error}`)
+    process.exit(1)
+})
