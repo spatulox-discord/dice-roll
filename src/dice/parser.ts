@@ -85,6 +85,12 @@ const TARGET_REGEX = /^vs(<=|>=|<|>|=)?(-?\d+)$/;
 const TERM_REGEX = /([+-])?(?:(\d*)d(\d+|%)(?:(kh|kl|dh|dl)(\d*)|(<=|>=|<|>|=)(\d+))?|(\d+))/y;
 
 export function parseFormula(input: string): DiceFormula {
+    // Removing the spaces would silently merge "1d20 5" into "1d205"
+    const splitNumber = /\S*\d\s+\d\S*/.exec(input);
+    if (splitNumber) {
+        throw new DiceParseError(`A space separates two numbers in \`${splitNumber[0]}\` : add a \`+\` or a \`-\`, or remove the space.`);
+    }
+
     const compact = input.replace(/\s+/g, '').toLowerCase();
 
     if (!compact) {
