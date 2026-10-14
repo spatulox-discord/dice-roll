@@ -169,16 +169,17 @@ export function buildTargetText(result: RollResult): string | null {
 
 /**
  * For each term counting successes, under the table : the total of all its faces and the total of the faces
- * of its successes, on two lines : "`4d6<=3` faces total: **11**" then "successes faces total: **6**". Null without success count.
+ * of its successes, as a "## Total:" heading and a list. The heading names the term when several terms count successes.
+ * Null without success count.
  */
 export function buildFacesTotalsText(result: RollResult): string | null {
-    const lines = result.terms.filter(isDiceTerm)
-        .filter(({term}) => term.filter?.type === 'success')
-        .map(({term, dice, faceTotal}) => {
-            const allFaces = sumOf(dice.map(die => die.value));
-            return `\`${formatTerm(term)}\` faces total: **${allFaces}**\nsuccesses faces total: **${faceTotal}**`;
-        });
-    return lines.length > 0 ? lines.join("\n") : null;
+    const successTerms = result.terms.filter(isDiceTerm).filter(({term}) => term.filter?.type === 'success');
+    const blocks = successTerms.map(({term, dice, faceTotal}) => [
+        successTerms.length > 1 ? `## Total \`${formatTerm(term)}\`:` : "## Total:",
+        `- faces: **${sumOf(dice.map(die => die.value))}**`,
+        `- successes faces: **${faceTotal}**`
+    ].join("\n"));
+    return blocks.length > 0 ? blocks.join("\n") : null;
 }
 
 /**

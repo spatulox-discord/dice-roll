@@ -99,17 +99,19 @@ describe("buildFacesTotalsText", () => {
 
     it("gives the total of every face and of the faces of the successes", () => {
         assert.equal(buildFacesTotalsText(rollWith("4d6<=3", [1, 5, 3, 2])),
-            "`4d6<=3` faces total: **11**\nsuccesses faces total: **6**");
+            "## Total:\n- faces: **11**\n- successes faces: **6**");
         assert.equal(buildFacesTotalsText(rollWith("2d6>4", [1, 2])),
-            "`2d6>4` faces total: **3**\nsuccesses faces total: **0**");
+            "## Total:\n- faces: **3**\n- successes faces: **0**");
     });
 
-    it("has one line per success count", () => {
+    it("names each success count when there are several", () => {
         assert.deepEqual(buildFacesTotalsText(rollWith("4d6<=3+1d20+2d10>=8", [1, 5, 3, 2, 12, 9, 3]))?.split("\n"), [
-            "`4d6<=3` faces total: **11**",
-            "successes faces total: **6**",
-            "`2d10>=8` faces total: **12**",
-            "successes faces total: **9**"
+            "## Total `4d6<=3`:",
+            "- faces: **11**",
+            "- successes faces: **6**",
+            "## Total `2d10>=8`:",
+            "- faces: **12**",
+            "- successes faces: **9**"
         ]);
     });
 });
@@ -177,7 +179,7 @@ describe("buildRollContainer", () => {
         const {texts} = build(rollWith("4d6<=3 vs 2", [1, 5, 3, 2]));
         assert.ok(texts[1]!.startsWith("```\n╔"));
         assert.doesNotMatch(texts[1]!, /faces total/);
-        assert.equal(texts[2], "`4d6<=3` faces total: **11**\nsuccesses faces total: **6**");
+        assert.equal(texts[2], "## Total:\n- faces: **11**\n- successes faces: **6**");
         assert.equal(texts[3], "### ✅ Success: 3 ≥ 2");
     });
 
