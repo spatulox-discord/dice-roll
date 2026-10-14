@@ -18,7 +18,7 @@ Bot Discord de lancer de dés, basé sur
 /info
 ```
 
-`/info` affiche (en privé) le mode d'emploi : notation, filtres (`kh` / `kl` / `dh` / `dl`, `k<=3`…), lecture du résultat et limites.
+`/info` affiche (en privé) le mode d'emploi : notation, filtres par valeur de face (`kh3`, `kl3`, `dh3`, `dl3`, `k<3`…), lecture du résultat et limites.
 
 | Formule | Signification |
 |---|---|
@@ -26,14 +26,16 @@ Bot Discord de lancer de dés, basé sur
 | `d20` | équivalent à `1d20` |
 | `3d6+1d4-2` | plusieurs termes, additionnés ou soustraits |
 | `d%` | un d100 |
-| `4d6kh3` | 4d6, garde les 3 plus hauts (*keep highest*) |
-| `2d20kh1` / `2d20kl1` | avantage / désavantage |
-| `4d6dl1` / `3d8dh1` | retire le plus bas / le plus haut (*drop lowest / highest*) |
-| `5d6k<=3` | garde tous les dés dont la face est ≤ 3 (aussi `<`, `>`, `>=`, `=`) |
+| `6d6kl3` | garde les dés qui font **3 ou moins** (*keep low*) |
+| `4d6kh3` | garde les dés qui font **3 ou plus** (*keep high*) |
+| `4d6dl2` | retire les dés qui font **2 ou moins** (*drop low*) |
+| `3d8dh7` | retire les dés qui font **7 ou plus** (*drop high*) |
+| `5d6k<3` | garde les dés dont la face est < 3 (aussi `<=`, `>`, `>=`, `=`) |
 
-Après `kh` / `kl` / `dh` / `dl`, le nombre est un **nombre de dés** : `5d6kl3` garde les 3 dés les plus bas,
-même si l'un d'eux fait 4. Pour filtrer sur la **valeur de la face**, utilise `k` avec un comparateur :
-`5d6k<=3` garde tous les dés qui font 3 ou moins (aucun dé gardé = 0). Un seul filtre par groupe de dés.
+Les filtres portent sur la **valeur de la face** de chaque dé, pas sur un nombre de dés : `6d6kl3` sur
+`[1] [5] [3] [3] [6] [2]` garde `[1] [3] [3] [2]`, soit les 4 dés qui font 3 ou moins. Le nombre de dés
+gardés varie donc d'un lancer à l'autre, et peut être nul : le groupe vaut alors 0. Un seul filtre par
+groupe de dés, et la valeur est obligatoire (`kh` seul est refusé).
 
 Le résultat affiche d'abord le **tapis de jeu** (les dés qui comptent, une ligne par terme), puis le total
 des dés, les modificateurs et le total final. Quand un groupe de dés a un filtre, un mini tapis
@@ -41,8 +43,8 @@ en dessous montre tous les dés lancés et le total sans filtre :
 
 ````
 ```
-2d20kh1  [15]
-+1d4     [ 3]
+2d20kh10  [15]
++1d4      [ 3]
 ```
 Total des dés : 18
 Modificateurs : +3
@@ -54,15 +56,15 @@ Modificateurs : +3
 -# Total sans filtre : 28
 
 Dés correspondant au filtre
-2d20kh1 garde le plus haut → [15]
+2d20kh10 garde les dés ≥ 10 → [15]
 ````
 
 Le champ **Dés correspondant au filtre** explique chaque filtre et liste les dés qu'il vise : les dés gardés
-pour `kh` / `kl` / `k<=…`, les dés retirés pour `dh` / `dl`.
+pour `kh` / `kl` / `k…`, les dés retirés pour `dh` / `dl`.
 
 - **`prive`** fait un lancer secret : seul toi vois le résultat.
 - Le bouton **🎲 Relancer** relance la même formule pour celui qui clique, avec la même visibilité.
-- Sur un d20 seul (y compris `2d20kh1`), un 20 naturel est une **réussite critique** et un 1 naturel un **échec critique**.
+- Quand il ne reste qu'un seul d20 compté (`1d20+5`, ou `2d20kh15` qui n'en garde qu'un), un 20 naturel est une **réussite critique** et un 1 naturel un **échec critique**.
 - Limites : 80 caractères, 100 dés par terme, 200 dés au total, de 2 à 1000 faces, 20 termes.
   Chaque utilisateur peut faire 5 lancers par tranche de 10 secondes.
 

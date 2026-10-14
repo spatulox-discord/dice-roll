@@ -57,17 +57,15 @@ export function buildFilterField(result: RollResult): string | null {
 
 const OPERATOR_SYMBOLS: Record<CompareOperator, string> = {'<': "<", '<=': "≤", '>': ">", '>=': "≥", '=': "="};
 
-function describeRule(rule: KeepRule): string {
-    if (rule.mode === 'k') {
-        return `garde les dés ${OPERATOR_SYMBOLS[rule.operator]} ${rule.value}`;
+function describeRule({mode, operator, value}: KeepRule): string {
+    switch (mode) {
+        case 'dh':
+            return `retire les dés ≥ ${value}`;
+        case 'dl':
+            return `retire les dés ≤ ${value}`;
+        default:
+            return `garde les dés ${OPERATOR_SYMBOLS[operator]} ${value}`;
     }
-    const {mode, count} = rule;
-    const verb = mode === 'kh' || mode === 'kl' ? "garde" : "retire";
-    const high = mode === 'kh' || mode === 'dh';
-    if (count === 1) {
-        return `${verb} le plus ${high ? "haut" : "bas"}`;
-    }
-    return `${verb} les ${count} plus ${high ? "hauts" : "bas"}`;
 }
 
 /**

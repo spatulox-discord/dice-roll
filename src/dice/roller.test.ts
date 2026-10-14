@@ -29,19 +29,21 @@ describe("rollFormula", () => {
         assert.equal(roll("1d20-1d4-2", 10, 3).total, 5);
     });
 
-    it("keeps the highest dice (4d6kh3)", () => {
-        const result = roll("4d6kh3", 2, 6, 1, 5);
-        assert.equal(result.total, 13);
-        assert.deepEqual(result.terms[0]!.dice.map(die => die.kept), [true, true, false, true]);
+    it("kl keeps every die showing the value or less (6d6kl3)", () => {
+        const result = roll("6d6kl3", 1, 5, 3, 3, 6, 2);
+        assert.deepEqual(result.terms[0]!.dice.filter(die => die.kept).map(die => die.value), [1, 3, 3, 2]);
+        assert.equal(result.total, 9);
     });
 
-    it("keeps the lowest die (2d20kl1, disadvantage)", () => {
-        assert.equal(roll("2d20kl1+5", 15, 7).total, 12);
+    it("kh keeps every die showing the value or more (4d6kh3)", () => {
+        const result = roll("4d6kh3", 2, 6, 1, 3);
+        assert.deepEqual(result.terms[0]!.dice.map(die => die.kept), [false, true, false, true]);
+        assert.equal(result.total, 9);
     });
 
-    it("drops the lowest / highest dice", () => {
-        assert.equal(roll("4d6dl1", 3, 1, 4, 6).total, 13);
-        assert.equal(roll("3d8dh1", 8, 2, 5).total, 7);
+    it("dl / dh remove every die showing the value or less / more", () => {
+        assert.equal(roll("4d6dl2", 3, 1, 2, 6).total, 9);
+        assert.equal(roll("3d8dh5", 8, 2, 5).total, 2);
     });
 
     it("keeps the dice matching a face value filter", () => {
@@ -60,17 +62,16 @@ describe("rollFormula", () => {
         assert.ok(result.terms[0]!.dice.every(die => !die.kept));
     });
 
-    it("breaks ties by roll order", () => {
-        assert.deepEqual([...keptIndexes([5, 5, 5], {mode: 'kh', count: 2})], [0, 1]);
-        assert.deepEqual([...keptIndexes([5, 5, 5], {mode: 'kl', count: 1})], [0]);
+    it("keeps every die of equal value", () => {
+        assert.deepEqual([...keptIndexes([5, 5, 2], {mode: 'kh', operator: '>=', value: 5})], [0, 1]);
     });
 
     it("detects natural 20 and natural 1 on a single d20", () => {
         assert.equal(roll("1d20+5", 20).critical, 'success');
         assert.equal(roll("1d20", 1).critical, 'failure');
         assert.equal(roll("1d20", 12).critical, null);
-        assert.equal(roll("2d20kh1", 20, 3).critical, 'success');
-        assert.equal(roll("2d20kl1", 20, 1).critical, 'failure');
+        assert.equal(roll("2d20kh15", 20, 3).critical, 'success');
+        assert.equal(roll("2d20kl5", 20, 1).critical, 'failure');
     });
 
     it("does not report criticals when the roll is not a single kept d20", () => {

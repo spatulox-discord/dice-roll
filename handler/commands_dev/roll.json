@@ -1,7 +1,7 @@
 {
   "name": "roll_dev",
   "type": 1,
-  "description": "Lance des dés (ex. 2d20+3, 4d6kh3, 2d20kl1, d%)",
+  "description": "Lance des dés (ex. 2d20+3, 6d6kl3, 5d6k<3, d%)",
   "integration_types": [
     0,
     1
@@ -16,7 +16,7 @@
     {
       "type": 3,
       "name": "formule",
-      "description": "La formule à lancer, ex. 1d20+5, 4d6kh3, 2d20kl1, 3d6+1d4-2",
+      "description": "La formule à lancer, ex. 1d20+5, 6d6kl3 (garde les dés ≤ 3), 3d6+1d4-2",
       "required": true,
       "max_length": 80
     },

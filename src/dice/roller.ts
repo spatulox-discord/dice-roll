@@ -48,36 +48,16 @@ function rollTerm(term: Term, rng: Rng): TermResult {
 }
 
 /**
- * Indexes of the dice that count in the total.
- * Ties are broken by roll order, so the result is deterministic.
+ * Indexes of the dice that count in the total : every die whose face matches the filter.
  */
 export function keptIndexes(values: number[], keep: KeepRule | null): Set<number> {
     const all = values.map((_, index) => index);
-    if (!keep) {
-        return new Set(all);
-    }
-    if (keep.mode === 'k') {
-        return new Set(all.filter(index => matchesValue(values[index]!, keep)));
-    }
-
-    const ascending = [...all].sort((a, b) => values[a]! - values[b]! || a - b);
-    const descending = [...all].sort((a, b) => values[b]! - values[a]! || a - b);
-
-    switch (keep.mode) {
-        case 'kh':
-            return new Set(descending.slice(0, keep.count));
-        case 'kl':
-            return new Set(ascending.slice(0, keep.count));
-        case 'dh':
-            return new Set(descending.slice(keep.count));
-        case 'dl':
-            return new Set(ascending.slice(keep.count));
-    }
+    return new Set(keep ? all.filter(index => matchesValue(values[index]!, keep)) : all);
 }
 
 /**
  * A natural 20 / natural 1 only makes sense when the roll boils down to a single kept d20
- * (`1d20+5`, `2d20kh1`...), not on `3d20` or `1d20+1d4`.
+ * (`1d20+5`, `2d20kh15` with a single die >= 15...), not on `3d20` or `1d20+1d4`.
  */
 function detectCritical(terms: TermResult[]): Critical {
     const diceTerms = terms.filter((result): result is TermResult & {term: DiceTerm} => result.term.kind === 'dice');

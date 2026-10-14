@@ -33,24 +33,15 @@ export function buildInfoEmbed(): EmbedBuilder {
             ].join("\n")
         },
         {
-            name: "🎯 Filtrer par nombre de dés",
+            name: "🎯 Filtrer les dés",
             value: [
-                "À coller juste après un groupe de dés. Le nombre qui suit est un **nombre de dés** (1 par défaut), pas une valeur de face :",
-                "`kh` *keep highest* : garde les plus hauts. `4d6kh3` garde les 3 meilleurs",
-                "`kl` *keep lowest* : garde les plus bas. `2d20kl1` garde le pire",
-                "`dh` *drop highest* : retire les plus hauts. `3d8dh1` retire le meilleur",
-                "`dl` *drop lowest* : retire les plus bas. `4d6dl1` retire le pire",
-                "Avantage : `2d20kh1`, désavantage : `2d20kl1`"
-            ].join("\n")
-        },
-        {
-            name: "🔎 Filtrer par valeur de face",
-            value: [
-                "`k` suivi d'un comparateur garde **tous** les dés dont la face correspond, quel que soit leur nombre :",
-                "`5d6k<=3` : garde les dés qui font 3 ou moins",
-                "`6d6k>=5` : garde les 5 et les 6",
-                "Comparateurs : `<` `<=` `>` `>=` `=`. Si aucun dé ne correspond, le groupe vaut 0",
-                "Un seul filtre par groupe de dés"
+                "À coller juste après un groupe de dés. Le nombre qui suit est une **valeur de face**, pas un nombre de dés :",
+                "`kh` *keep high* : garde les dés ≥ valeur. `4d6kh3` garde les 3, 4, 5 et 6",
+                "`kl` *keep low* : garde les dés ≤ valeur. `6d6kl3` sur `[1] [5] [3] [3] [6] [2]` garde `[1] [3] [3] [2]`",
+                "`dh` *drop high* : retire les dés ≥ valeur. `3d8dh7` retire les 7 et les 8",
+                "`dl` *drop low* : retire les dés ≤ valeur. `4d6dl2` retire les 1 et les 2",
+                "`k` + comparateur (`<` `<=` `>` `>=` `=`) : `5d6k<3`, `6d6k=6`",
+                "Un seul filtre par groupe. Si aucun dé ne correspond, le groupe vaut 0"
             ].join("\n")
         },
         {
@@ -59,8 +50,8 @@ export function buildInfoEmbed(): EmbedBuilder {
                 "**Tapis de jeu** : les dés qui comptent, une ligne par groupe de dés",
                 "**Total des dés**, puis les **modificateurs** et le **total** final",
                 "Avec un filtre : un mini tapis montre tous les dés lancés et le total sans filtre,",
-                `et le champ **${FILTER_FIELD_NAME}** liste les dés gardés (\`kh\`/\`kl\`/\`k<=…\`) ou retirés (\`dh\`/\`dl\`)`,
-                "Sur un d20 seul (`1d20+5`, `2d20kh1`…) : 20 naturel = ✨ **réussite critique**, 1 naturel = 💀 **échec critique**"
+                `et le champ **${FILTER_FIELD_NAME}** liste les dés gardés (\`kh\`/\`kl\`/\`k…\`) ou retirés (\`dh\`/\`dl\`)`,
+                "Quand un seul d20 compte (`1d20+5`…) : 20 naturel = ✨ **réussite critique**, 1 naturel = 💀 **échec critique**"
             ].join("\n")
         },
         {

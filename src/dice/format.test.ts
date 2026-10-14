@@ -32,13 +32,13 @@ describe("buildRollDescription", () => {
         assert.doesNotMatch(description, /-#/);
     });
 
-    it("applies keep / drop rules on the mat and shows every die on the mini mat", () => {
+    it("applies the filters on the mat and shows every die on the mini mat", () => {
         const description = describeRoll("4d6kh3+2", 2, 6, 1, 5);
         const [main, mini] = description.split("\n\n");
 
-        assert.match(main!, /4d6kh3  \[2\] \[6\] \[5\]  = 13/);
-        assert.doesNotMatch(main!, /\[1\]/);
-        assert.match(main!, /# Total : 15/);
+        assert.match(main!, /4d6kh3  \[6\] \[5\]  = 11/);
+        assert.doesNotMatch(main!, /\[1\]|\[2\]/);
+        assert.match(main!, /# Total : 13/);
 
         assert.match(mini!, /-# `4d6  \[2\] \[6\] \[1\] \[5\]`/);
         assert.match(mini!, /-# Total sans filtre : 16/);
@@ -61,7 +61,7 @@ describe("buildRollDescription", () => {
 
     it("reports critical rolls", () => {
         assert.match(describeRoll("1d20", 20), /Réussite critique/);
-        assert.match(describeRoll("2d20kl1", 20, 1), /Échec critique/);
+        assert.match(describeRoll("2d20kl5", 20, 1), /Échec critique/);
     });
 });
 
@@ -71,13 +71,13 @@ describe("buildFilterField", () => {
     });
 
     it("lists the dice kept by kh / kl", () => {
-        assert.equal(buildFilterField(rollWith("4d6kh3", [2, 6, 1, 5])), "`4d6kh3` garde les 3 plus hauts → `[2] [6] [5]`");
-        assert.equal(buildFilterField(rollWith("2d20kl1", [15, 7])), "`2d20kl1` garde le plus bas → `[7]`");
+        assert.equal(buildFilterField(rollWith("6d6kl3", [1, 5, 3, 3, 6, 2])), "`6d6kl3` garde les dés ≤ 3 → `[1] [3] [3] [2]`");
+        assert.equal(buildFilterField(rollWith("4d6kh3", [2, 6, 1, 5])), "`4d6kh3` garde les dés ≥ 3 → `[6] [5]`");
     });
 
     it("lists the dice removed by dh / dl", () => {
-        assert.equal(buildFilterField(rollWith("4d6dl1", [3, 1, 4, 6])), "`4d6dl1` retire le plus bas → `[1]`");
-        assert.equal(buildFilterField(rollWith("5d8dh2", [8, 2, 5, 7, 1])), "`5d8dh2` retire les 2 plus hauts → `[8] [7]`");
+        assert.equal(buildFilterField(rollWith("4d6dl2", [3, 1, 2, 6])), "`4d6dl2` retire les dés ≤ 2 → `[1] [2]`");
+        assert.equal(buildFilterField(rollWith("5d8dh7", [8, 2, 5, 7, 1])), "`5d8dh7` retire les dés ≥ 7 → `[8] [7]`");
     });
 
     it("describes face value filters", () => {
@@ -87,10 +87,10 @@ describe("buildFilterField", () => {
     });
 
     it("has one line per filtered term", () => {
-        const field = buildFilterField(rollWith("2d20kh1+1d4+4d6dl1", [3, 18, 2, 5, 1, 4, 6]));
+        const field = buildFilterField(rollWith("2d20kh10+1d4+4d6dl1", [3, 18, 2, 5, 1, 4, 6]));
         assert.deepEqual(field?.split("\n"), [
-            "`2d20kh1` garde le plus haut → `[18]`",
-            "`4d6dl1` retire le plus bas → `[1]`"
+            "`2d20kh10` garde les dés ≥ 10 → `[18]`",
+            "`4d6dl1` retire les dés ≤ 1 → `[1]`"
         ]);
     });
 });

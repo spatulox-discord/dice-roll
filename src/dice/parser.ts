@@ -2,10 +2,11 @@
  * Parses a tabletop dice formula into terms.
  *
  * Supported : `NdS` (N defaults to 1), `d%` (= d100), constants, `+` / `-` between terms,
- * and one filter per dice term :
- * - by count : `kh` `kl` `dh` `dl` followed by an optional number of dice (default 1), e.g. `4d6kh3`
- * - by face value : `k` followed by `<` `<=` `>` `>=` or `=` and a value, e.g. `5d6k<=3`
- * Examples : `1d20+5`, `4d6kh3`, `2d20kl1 + 1d4 - 1`, `6d6k>=5`, `d%`.
+ * and one filter per dice term, always on the face value of each die :
+ * - `kh` / `kl` + value : keeps the dice >= / <= the value, e.g. `6d6kl3` keeps every die showing 3 or less
+ * - `dh` / `dl` + value : removes the dice >= / <= the value
+ * - `k` + `<` `<=` `>` `>=` or `=` + value, e.g. `5d6k<3`
+ * Examples : `1d20+5`, `4d6kh3`, `2d20kl10 + 1d4 - 1`, `6d6k>=5`, `d%`.
  */
 
 export const LIMITS = {
@@ -19,24 +20,27 @@ export const LIMITS = {
     maxTerms: 20
 } as const;
 
-export type KeepMode = 'kh' | 'kl' | 'dh' | 'dl';
+export type KeepMode = 'kh' | 'kl' | 'dh' | 'dl' | 'k';
 
 export type CompareOperator = '<' | '<=' | '>' | '>=' | '=';
 
-/** Keeps / drops a number of dice, chosen by their face value */
-export type CountKeepRule = {
+/**
+ * Keeps the dice whose face matches `operator value`, however many they are.
+ * `mode` is the syntax used : kh / kl / dh / dl are shortcuts for a comparison.
+ */
+export type KeepRule = {
     mode: KeepMode
-    count: number
-};
-
-/** Keeps the dice whose face matches the comparison, however many they are */
-export type ValueKeepRule = {
-    mode: 'k'
     operator: CompareOperator
     value: number
 };
 
-export type KeepRule = CountKeepRule | ValueKeepRule;
+/** Comparison that the dice must match to be KEPT (dh / dl remove the dice >= / <= the value) */
+const SHORTCUT_OPERATORS: Record<Exclude<KeepMode, 'k'>, CompareOperator> = {
+    kh: '>=',
+    kl: '<=',
+    dh: '<',
+    dl: '>'
+};
 
 export type DiceTerm = {
     kind: 'dice'
@@ -67,7 +71,7 @@ export class DiceParseError extends Error {
     }
 }
 
-const TERM_REGEX = /([+-])?(?:(\d*)d(\d+|%)(?:(kh|kl|dh|dl)(\d*)|k(<=|>=|<|>|=)(\d+))?|(\d+))/y;
+const TERM_REGEX = /([+-])?(?:(\d*)d(\d+|%)(?:(kh|kl|dh|dl)(\d+)|k(<=|>=|<|>|=)(\d+))?|(\d+))/y;
 
 export function parseFormula(input: string): DiceFormula {
     const formula = input.replace(/\s+/g, '').toLowerCase();
@@ -91,7 +95,7 @@ export function parseFormula(input: string): DiceFormula {
             throw new DiceParseError(`Formule invalide près de \`${formula.slice(start)}\`. Exemple : \`2d20+3\`, \`4d6kh3\`.`);
         }
 
-        const [, signChar, countStr, sidesStr, keepMode, keepCountStr, operator, valueStr, constantStr] = match;
+        const [, signChar, countStr, sidesStr, shortcut, shortcutValue, operator, operatorValue, constantStr] = match;
 
         if (terms.length > 0 && !signChar) {
             throw new DiceParseError(`Il manque un \`+\` ou un \`-\` avant \`${match[0]}\`.`);
@@ -130,24 +134,14 @@ export function parseFormula(input: string): DiceFormula {
         }
 
         let keep: KeepRule | null = null;
-        if (keepMode) {
-            const keepCount = keepCountStr ? parseInt(keepCountStr, 10) : 1;
-            const isKeep = keepMode === 'kh' || keepMode === 'kl';
-
-            if (isKeep && (keepCount < 1 || keepCount > count)) {
-                throw new DiceParseError(`\`${match[0]}\` : on peut garder entre 1 et ${count} dé(s).`);
-            }
-            if (!isKeep && (keepCount < 1 || keepCount >= count)) {
-                throw new DiceParseError(`\`${match[0]}\` : on ne peut pas retirer tous les dés.`);
-            }
-            keep = {mode: keepMode as KeepMode, count: keepCount};
+        if (shortcut) {
+            const mode = shortcut as Exclude<KeepMode, 'k'>;
+            keep = {mode, operator: SHORTCUT_OPERATORS[mode], value: parseInt(shortcutValue!, 10)};
         } else if (operator) {
-            const value = parseInt(valueStr!, 10);
-            const rule: ValueKeepRule = {mode: 'k', operator: operator as CompareOperator, value};
-            if (!Array.from({length: sides}, (_, face) => face + 1).some(face => matchesValue(face, rule))) {
-                throw new DiceParseError(`\`${match[0]}\` : aucune face d'un d${sides} ne peut correspondre à ce filtre.`);
-            }
-            keep = rule;
+            keep = {mode: 'k', operator: operator as CompareOperator, value: parseInt(operatorValue!, 10)};
+        }
+        if (keep && !Array.from({length: sides}, (_, face) => face + 1).some(face => matchesValue(face, keep!))) {
+            throw new DiceParseError(`\`${match[0]}\` : ce filtre ne laisse aucune face possible sur un d${sides}.`);
         }
 
         terms.push({kind: 'dice', sign, count, sides, keep});
@@ -157,7 +151,7 @@ export function parseFormula(input: string): DiceFormula {
         throw new DiceParseError('La formule doit contenir au moins un dé (ex. `1d20`).');
     }
 
-    // "d6kh" becomes "1d6kh1" : the canonical form can be longer than the input
+    // "d6kh1" becomes "1d6kh1" : the canonical form can be longer than the input
     const normalized = formatFormula(terms);
     if (normalized.length > LIMITS.formulaLength) {
         throw new DiceParseError(`La formule est trop longue (${LIMITS.formulaLength} caractères maximum).`);
@@ -174,10 +168,11 @@ export function formatTerm(term: Term): string {
 }
 
 export function formatKeepRule(keep: KeepRule): string {
-    return keep.mode === 'k' ? `k${keep.operator}${keep.value}` : `${keep.mode}${keep.count}`;
+    return keep.mode === 'k' ? `k${keep.operator}${keep.value}` : `${keep.mode}${keep.value}`;
 }
 
-export function matchesValue(face: number, {operator, value}: ValueKeepRule): boolean {
+/** True when a die showing `face` is kept by the rule */
+export function matchesValue(face: number, {operator, value}: KeepRule): boolean {
     switch (operator) {
         case '<':
             return face < value;
