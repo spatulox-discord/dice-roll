@@ -6,7 +6,7 @@ Bot Discord de lancer de dés, basé sur
 
 | Package | Rôle |
 |---|---|
-| [`@spatulox/simplediscordbot`](https://www.npmjs.com/package/@spatulox/simplediscordbot) | `Bot` (login automatique + logs), `EmbedManager`, `ButtonManager`… |
+| [`@spatulox/simplediscordbot`](https://www.npmjs.com/package/@spatulox/simplediscordbot) | `Bot` (login automatique + logs), `ComponentManager` (Components V2), `ButtonManager`… |
 | [`@spatulox/discord-module`](https://www.npmjs.com/package/@spatulox/discord-module) | `InteractionsManager` : route `/roll` et le bouton « Relancer » |
 | [`@spatulox/discord-interaction-manager`](https://www.npmjs.com/package/@spatulox/discord-interaction-manager) | CLI `dim` : déploie la commande `/roll` sur Discord |
 | [`@spatulox/utils`](https://www.npmjs.com/package/@spatulox/utils) | `Time` (durées du rate limit) |
@@ -37,24 +37,28 @@ Les filtres portent sur la **valeur de la face** de chaque dé, pas sur un nombr
 gardés varie donc d'un lancer à l'autre, et peut être nul : le groupe vaut alors 0. Un seul filtre par
 groupe de dés, et la valeur est obligatoire (`kh` seul est refusé).
 
-Le résultat affiche d'abord le **tapis de jeu** (les dés qui comptent, une ligne par terme), puis le total
-des dés, les modificateurs et le total final. Quand un groupe de dés a un filtre, un mini tapis
+Le résultat est un message en **Components V2** : un en-tête avec la formule et l'avatar de celui qui lance,
+puis le **tapis de jeu** (les dés qui comptent, une ligne par terme), puis le total des dés, les modificateurs
+et le total final, avec le bouton **🎲 Relancer** à côté. Quand un groupe de dés a un filtre, un mini tapis
 en dessous montre tous les dés lancés et le total sans filtre :
 
 ````
+### 🎲 2d20kh10+1d4+3                         [avatar]
+-# Lancé par Spatulox
+─────────────────────────
 ```
 2d20kh10  [15]
 +1d4      [ 3]
 ```
 Total des dés : 18
 Modificateurs : +3
-# Total : 21
-
+# Total : 21                              [🎲 Relancer]
+─────────────────────────
 -# Tous les dés, sans filtre :
 -# 2d20  [15] [ 7]
 -# +1d4  [ 3]
 -# Total sans filtre : 28
-
+─────────────────────────
 Dés correspondant au filtre
 2d20kh10 garde les dés ≥ 10 → [15]
 ````
@@ -63,7 +67,7 @@ Le champ **Dés correspondant au filtre** explique chaque filtre et liste les d�
 pour `kh` / `kl` / `k…`, les dés retirés pour `dh` / `dl`.
 
 - **`prive`** fait un lancer secret : seul toi vois le résultat.
-- Le bouton **🎲 Relancer** relance la même formule pour celui qui clique, avec la même visibilité.
+- Le bouton **🎲 Relancer**, à côté du total, relance la même formule pour celui qui clique, avec la même visibilité.
 - Limites : 80 caractères, 100 dés par terme, 200 dés au total, de 2 à 1000 faces, 20 termes.
   Chaque utilisateur peut faire 5 lancers par tranche de 10 secondes.
 
@@ -147,9 +151,10 @@ src/
   dice/
     parser.ts               formule → termes (+ limites et erreurs)
     roller.ts               tirage (crypto.randomInt), filtres
-    format.ts               embed du résultat (tapis de jeu) + bouton « Relancer »
+    format.ts               message du résultat en Components V2 (tapis de jeu) + bouton « Relancer »
     reply.ts                parse + tire + répond (partagé par /roll et le bouton)
     *.test.ts               tests
+  test/components.ts        aides de test pour les Components V2
   interactions/
     commands/roll.ts        handler de /roll
     commands/info.ts        handler de /info (mode d'emploi)

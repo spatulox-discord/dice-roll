@@ -1,5 +1,5 @@
-import {ChatInputCommandInteraction, EmbedBuilder} from "discord.js";
-import {Bot, EmbedManager} from "@spatulox/simplediscordbot";
+import {ChatInputCommandInteraction, ContainerBuilder, SeparatorSpacingSize} from "discord.js";
+import {Bot, ComponentManager} from "@spatulox/simplediscordbot";
 import {LIMITS} from "../../dice/parser";
 import {FILTER_FIELD_NAME} from "../../dice/format";
 import {RATE_LIMIT} from "../../dice/reply";
@@ -10,18 +10,20 @@ import {RATE_LIMIT} from "../../dice/reply";
  */
 export async function info(interaction: ChatInputCommandInteraction) {
     try {
-        await interaction.reply(EmbedManager.toInteraction(buildInfoEmbed(), true))
+        await interaction.reply(ComponentManager.toInteraction(buildInfoContainer(), null, false, true))
     } catch (error) {
         Bot.log.error(`info command failed : ${error}`)
     }
 }
 
-export function buildInfoEmbed(): EmbedBuilder {
-    const embed = EmbedManager.create()
-        .setTitle("🎲 Dice Roll : mode d'emploi")
-        .setDescription("Lance des dés avec `/roll formule:<formule>`. Ajoute `prive:vrai` pour un lancer secret, visible par toi seul.")
+export function buildInfoContainer(): ContainerBuilder {
+    const container = ComponentManager.create({
+        title: "## 🎲 Dice Roll : mode d'emploi",
+        description: "Lance des dés avec `/roll formule:<formule>`. Ajoute `prive:vrai` pour un lancer secret, visible par toi seul.",
+        separator: SeparatorSpacingSize.Small
+    })
 
-    return EmbedManager.fields(embed, [
+    return ComponentManager.fields(container, [
         {
             name: "📝 Écrire une formule",
             value: [
@@ -55,7 +57,7 @@ export function buildInfoEmbed(): EmbedBuilder {
         },
         {
             name: "🔁 Relancer",
-            value: "Le bouton **🎲 Relancer** sous un résultat relance la même formule pour toi, avec la même visibilité (public ou secret)."
+            value: "Le bouton **🎲 Relancer**, à côté du total, relance la même formule pour toi, avec la même visibilité (public ou secret)."
         },
         {
             name: "⚠️ Limites",

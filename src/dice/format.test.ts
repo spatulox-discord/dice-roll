@@ -2,18 +2,32 @@ import {describe, it} from "node:test";
 import assert from "node:assert/strict";
 import {parseFormula} from "./parser";
 import {rollFormula} from "./roller";
-import {buildFilterField, buildRollDescription} from "./format";
+import {ButtonStyle, ComponentType} from "discord.js";
+import {
+    buildFilterField,
+    buildMatText,
+    buildMiniMatText,
+    buildRollContainer,
+    buildTotalsText,
+    FILTER_FIELD_NAME,
+    TEXT_MAX_LENGTH
+} from "./format";
+import {RollResult} from "./roller";
+import {containerTexts, fakeUser} from "../test/components";
 
 function rollWith(input: string, values: number[]) {
     let index = 0;
     return rollFormula(parseFormula(input), () => values[index++]!);
 }
 
+/** The mat and the totals, then the mini mat after a blank line, as they read in Discord */
 function describeRoll(input: string, ...values: number[]): string {
-    return buildRollDescription(rollWith(input, values));
+    const result = rollWith(input, values);
+    const mini = buildMiniMatText(result);
+    return `${buildMatText(result)}\n${buildTotalsText(result)}${mini ? `\n\n${mini}` : ""}`;
 }
 
-describe("buildRollDescription", () => {
+describe("game mat texts", () => {
     it("shows the mat, the dice total, the modifiers and the total", () => {
         const description = describeRoll("2d6+1d4-2", 3, 5, 4);
         assert.match(description, /^```\n2d6   \[3\] \[5\]  = 8\n\+1d4  \[4\]\n```/);
@@ -87,5 +101,50 @@ describe("buildFilterField", () => {
             "`2d20kh10` garde les dés ≥ 10 → `[18]`",
             "`4d6dl1` retire les dés ≤ 1 → `[1]`"
         ]);
+    });
+});
+
+describe("buildRollContainer", () => {
+    function build(result: RollResult, isPrivate = false) {
+        const container = buildRollContainer(result, fakeUser, isPrivate);
+        return {json: JSON.stringify(container.toJSON()), texts: containerTexts(container), container};
+    }
+
+    it("shows the header, the mat, the totals and the reroll button", () => {
+        const {texts, container} = build(rollWith("2d6+3", [4, 5]));
+
+        assert.match(texts[0]!, /^### 🎲 2d6\+3\n-# Lancé par \*\*Testeur\\_\\\*du\\\*\\_dé\*\*$/);
+        assert.ok(texts.some(text => text.startsWith("```\n2d6")));
+        assert.ok(texts.some(text => text.includes("# Total : 12")));
+
+        const section = container.toJSON().components.find(component =>
+            component.type === ComponentType.Section && component.accessory.type === ComponentType.Button);
+        assert.ok(section, "no section with the reroll button");
+        const button = section.type === ComponentType.Section ? section.accessory : null;
+        assert.ok(button && button.type === ComponentType.Button && button.style === ButtonStyle.Secondary);
+        assert.equal("custom_id" in button ? button.custom_id : null, "dice_reroll|s|2d6+3");
+    });
+
+    it("carries the visibility in the reroll button", () => {
+        assert.match(build(rollWith("1d20", [3]), true).json, /dice_reroll\|p\|1d20/);
+    });
+
+    it("adds the mini mat and the filter list only with a filter", () => {
+        assert.doesNotMatch(build(rollWith("3d6", [1, 2, 3])).json, /sans filtre|Dés correspondant/);
+
+        const {texts} = build(rollWith("6d6kl3", [1, 5, 3, 3, 6, 2]));
+        assert.ok(texts.some(text => text.startsWith("-# Tous les dés, sans filtre")));
+        assert.ok(texts.includes(`__**${FILTER_FIELD_NAME}**__`));
+        assert.ok(texts.includes("`6d6kl3` garde les dés ≤ 3 → `[1] [3] [3] [2]`"));
+    });
+
+    it("stays under Discord's text limit on the biggest rolls", () => {
+        const formula = "100d1000k>=1+100d1000kl999";
+        const values = Array.from({length: 200}, (_, index) => 100 + index);
+        const {texts} = build(rollWith(formula, values));
+        const total = texts.reduce((sum, text) => sum + text.length, 0);
+        // The footer added by ComponentManager.toInteraction has room left
+        assert.ok(total <= TEXT_MAX_LENGTH - 60, `${total} characters`);
+        assert.ok(texts.some(text => text.startsWith("```")), "the game mat must always be there");
     });
 });

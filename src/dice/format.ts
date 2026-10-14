@@ -1,13 +1,15 @@
-import {ActionRowBuilder, ButtonBuilder, EmbedBuilder, User} from "discord.js";
-import {ButtonManager, EmbedManager} from "@spatulox/simplediscordbot";
+import {ButtonBuilder, ContainerBuilder, escapeMarkdown, SeparatorSpacingSize, User} from "discord.js";
+import {ButtonManager, ComponentManager, ComponentManagerField, SimpleColor} from "@spatulox/simplediscordbot";
 import {CompareOperator, DiceTerm, formatTerm, KeepRule} from "./parser";
 import {RollResult, TermResult} from "./roller";
 
 export const REROLL_PREFIX = "dice_reroll";
 const REROLL_SEPARATOR = "|";
 
-const DESCRIPTION_MAX_LENGTH = 4096;
-const FIELD_MAX_LENGTH = 1024;
+/** Discord caps the text of a Components V2 message at 4000 characters */
+export const TEXT_MAX_LENGTH = 4000;
+/** Room kept for the footer ComponentManager adds (bot name + timestamps) */
+const FOOTER_RESERVED_LENGTH = 100;
 
 export const FILTER_FIELD_NAME = "Dés correspondant au filtre";
 
@@ -18,14 +20,99 @@ export type RerollPayload = {
 
 type DiceTermResult = TermResult & {term: DiceTerm};
 
-export function buildRollEmbed(result: RollResult, user: User): EmbedBuilder {
-    const embed = EmbedManager.create()
-        .setTitle(`🎲 ${result.formula.normalized}`)
-        .setAuthor({name: user.displayName, iconURL: user.displayAvatarURL()})
-        .setDescription(buildRollDescription(result));
+/**
+ * The roll as a Components V2 container :
+ * - header : the formula and who rolled, with their avatar
+ * - the game mat (dice that count, filters applied)
+ * - the totals, with the "Relancer" button next to them
+ * - with a filter : the mini mat (every die, no filter) and the "Dés correspondant au filtre" list
+ */
+export function buildRollContainer(result: RollResult, user: User, isPrivate: boolean): ContainerBuilder {
+    const header = `### 🎲 ${result.formula.normalized}\n-# Lancé par **${escapeMarkdown(user.displayName)}**`;
+    const container = ComponentManager.create({
+        title: header,
+        thumbnailUrl: user.displayAvatarURL(),
+        separator: SeparatorSpacingSize.Small
+    });
 
-    const filter = buildFilterField(result);
-    return filter ? EmbedManager.field(embed, {name: FILTER_FIELD_NAME, value: filter}) : embed;
+    const {miniMat, filter} = fitOptionalSections(
+        result,
+        TEXT_MAX_LENGTH - FOOTER_RESERVED_LENGTH - header.length - buildMatText(result).length - buildTotalsText(result).length
+    );
+
+    const fields: ComponentManagerField[] = [
+        {value: buildMatText(result), separator: false},
+        {value: buildTotalsText(result), button: buildRerollButton(result.formula.normalized, isPrivate)}
+    ];
+    if (miniMat) fields.push({value: miniMat});
+    if (filter) fields.push({name: FILTER_FIELD_NAME, value: filter});
+
+    return ComponentManager.fields(container, fields);
+}
+
+/** Ephemeral error answer (invalid formula, stale button...) */
+export function buildErrorContainer(message: string): ContainerBuilder {
+    return ComponentManager.create({title: "### ❌ Lancer impossible", description: message, color: SimpleColor.error});
+}
+
+/**
+ * The mini mat and the filter list only matter with huge formulas when it comes to the text limit :
+ * the mini mat is dropped first, then the filter list is cut.
+ */
+function fitOptionalSections(result: RollResult, budget: number): {miniMat: string | null, filter: string | null} {
+    let miniMat = buildMiniMatText(result);
+    let filter = buildFilterField(result);
+    // `__**name**__` added by ComponentManager.field
+    const filterLength = () => filter ? filter.length + FILTER_FIELD_NAME.length + 6 : 0;
+
+    if ((miniMat?.length ?? 0) + filterLength() > budget) {
+        miniMat = null;
+    }
+    if (filter && filterLength() > budget) {
+        const room = budget - FILTER_FIELD_NAME.length - 6;
+        filter = room > 1 ? `${filter.slice(0, room - 1)}…` : null;
+    }
+    return {miniMat, filter};
+}
+
+/** The game mat : one line per dice term with the dice that count (filters applied) */
+export function buildMatText(result: RollResult): string {
+    const diceTerms = result.terms.filter(isDiceTerm);
+    return codeBlock(mat(diceTerms, dieWidth(diceTerms), true));
+}
+
+/** Dice total, modifiers (only when there are some) and the final total */
+export function buildTotalsText(result: RollResult): string {
+    const diceTotal = result.terms.filter(isDiceTerm).reduce((sum, term) => sum + term.subtotal, 0);
+    const modifiers = result.terms.filter(term => term.term.kind === 'constant');
+
+    const lines = [`Total des dés : **${diceTotal}**`];
+    if (modifiers.length > 0) {
+        lines.push(`Modificateurs : **${signed(sumOf(modifiers.map(term => term.subtotal)))}**`);
+    }
+    lines.push(`# Total : ${result.total}`);
+    return lines.join("\n");
+}
+
+/**
+ * Every die rolled and the total without filters, in small text.
+ * Null when no term has a filter : the game mat already shows every die.
+ */
+export function buildMiniMatText(result: RollResult): string | null {
+    const diceTerms = result.terms.filter(isDiceTerm);
+    if (!diceTerms.some(term => term.term.keep)) {
+        return null;
+    }
+
+    const rawTotal = result.terms.reduce((sum, term) => term.term.kind === 'constant'
+        ? sum + term.subtotal
+        : sum + term.term.sign * sumOf(term.dice.map(die => die.value)), 0);
+
+    return [
+        "-# Tous les dés, sans filtre :",
+        ...mat(diceTerms, dieWidth(diceTerms), false).map(line => `-# \`${line}\``),
+        `-# Total sans filtre : ${rawTotal}`
+    ].join("\n");
 }
 
 /**
@@ -44,11 +131,7 @@ export function buildFilterField(result: RollResult): string | null {
         return [`\`${formatTerm(term)}\` ${describeRule(term.keep)} → ${shown}`];
     });
 
-    if (lines.length === 0) {
-        return null;
-    }
-    const value = lines.join("\n");
-    return value.length <= FIELD_MAX_LENGTH ? value : `${value.slice(0, FIELD_MAX_LENGTH - 1)}…`;
+    return lines.length > 0 ? lines.join("\n") : null;
 }
 
 const OPERATOR_SYMBOLS: Record<CompareOperator, string> = {'<': "<", '<=': "≤", '>': ">", '>=': "≥", '=': "="};
@@ -62,47 +145,6 @@ function describeRule({mode, operator, value}: KeepRule): string {
         default:
             return `garde les dés ${OPERATOR_SYMBOLS[operator]} ${value}`;
     }
-}
-
-/**
- * The "game mat" : the dice that count (filters applied), the dice total,
- * the modifiers and the final total. When a term has a filter, a smaller
- * mat below shows every die rolled and the total without filters.
- */
-export function buildRollDescription(result: RollResult): string {
-    const diceTerms = result.terms.filter(isDiceTerm);
-    const modifiers = result.terms.filter(term => term.term.kind === 'constant');
-    const width = Math.max(...diceTerms.map(term => `${term.term.sides}`.length));
-
-    const diceTotal = diceTerms.reduce((sum, term) => sum + term.subtotal, 0);
-    const modifiersTotal = modifiers.reduce((sum, term) => sum + term.subtotal, 0);
-
-    const lines = [
-        codeBlock(mat(diceTerms, width, true)),
-        `Total des dés : **${diceTotal}**`
-    ];
-    if (modifiers.length > 0) {
-        lines.push(`Modificateurs : **${signed(modifiersTotal)}**`);
-    }
-    lines.push(`# Total : ${result.total}`);
-
-
-    const main = lines.join("\n");
-
-    if (!diceTerms.some(term => term.term.keep)) {
-        return main;
-    }
-
-    const rawTotal = diceTerms.reduce((sum, term) => sum + term.term.sign * sumOf(term.dice.map(die => die.value)), modifiersTotal);
-    const miniMat = [
-        "-# Tous les dés, sans filtre :",
-        ...mat(diceTerms, width, false).map(line => `-# \`${line}\``),
-        `-# Total sans filtre : ${rawTotal}`
-    ].join("\n");
-
-    const full = `${main}\n\n${miniMat}`;
-    // Only reachable with huge formulas : the main mat matters more than the mini one
-    return full.length <= DESCRIPTION_MAX_LENGTH ? full : main;
 }
 
 /**
@@ -125,6 +167,10 @@ function mat(terms: DiceTermResult[], width: number, applyKeep: boolean): string
     });
 }
 
+function dieWidth(terms: DiceTermResult[]): number {
+    return Math.max(...terms.map(term => `${term.term.sides}`.length));
+}
+
 function codeBlock(lines: string[]): string {
     return "```\n" + lines.join("\n") + "\n```";
 }
@@ -141,9 +187,9 @@ function signed(value: number): string {
     return value >= 0 ? `+${value}` : `${value}`;
 }
 
-export function buildRerollRow(formula: string, isPrivate: boolean): ActionRowBuilder<ButtonBuilder> {
+export function buildRerollButton(formula: string, isPrivate: boolean): ButtonBuilder {
     const customId = [REROLL_PREFIX, isPrivate ? "p" : "s", formula].join(REROLL_SEPARATOR);
-    return ButtonManager.row(ButtonManager.secondary({customId, label: "Relancer", emoji: "🎲"}));
+    return ButtonManager.secondary({customId, label: "Relancer", emoji: "🎲"});
 }
 
 export function parseRerollId(customId: string): RerollPayload | null {

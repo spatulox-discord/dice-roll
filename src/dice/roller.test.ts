@@ -2,7 +2,7 @@ import {describe, it} from "node:test";
 import assert from "node:assert/strict";
 import {parseFormula} from "./parser";
 import {cryptoRng, keptIndexes, Rng, rollFormula} from "./roller";
-import {buildRerollRow, parseRerollId, REROLL_PREFIX} from "./format";
+import {buildRerollButton, parseRerollId, REROLL_PREFIX} from "./format";
 
 /** Returns the given values in order, whatever the dice */
 function sequence(...values: number[]): Rng {
@@ -78,7 +78,7 @@ describe("reroll customId", () => {
     it("round-trips the formula and the visibility", () => {
         for (const isPrivate of [true, false]) {
             const formula = parseFormula("2d20kl1+1d4-2").normalized;
-            const customId = buildRerollRow(formula, isPrivate).components[0]!.toJSON() as {custom_id: string};
+            const customId = buildRerollButton(formula, isPrivate).toJSON() as {custom_id: string};
             assert.ok(customId.custom_id.startsWith(REROLL_PREFIX));
             assert.ok(customId.custom_id.length <= 100);
             assert.deepEqual(parseRerollId(customId.custom_id), {formula, isPrivate});
