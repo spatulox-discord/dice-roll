@@ -11,6 +11,59 @@ Discord dice roller bot, built on
 | [`@spatulox/discord-interaction-manager`](https://www.npmjs.com/package/@spatulox/discord-interaction-manager) | `dim` CLI: deploys the commands to Discord |
 | [`@spatulox/utils`](https://www.npmjs.com/package/@spatulox/utils) | `Time` (rate limit durations) |
 
+## Quick start
+
+### Step 0: Create the bot on the Discord Dev Portal
+
+Resources:
+
+- [Discord Dev Portal](https://discord.com/developers/applications)
+- [Youtube video about the dev portal](https://youtu.be/zrNloK9b1ro)
+
+1. **New Application**, give it a name.
+2. **Bot** tab → **Reset Token** → copy the token. Keep it secret: anyone with it controls your bot.
+   No privileged intent is needed, leave them off.
+3. **Installation** tab → in the default install settings, add the `applications.commands` and `bot`
+   scopes, then open the install link to add the bot to your server (or to your account, for a user install).
+
+### Step 1: Fill in the `.env`
+
+```bash
+git clone https://github.com/spatulox-discord/dice-roll.git
+cd dice-roll
+cp .env.example .env
+```
+
+Then edit `.env`:
+
+```dotenv
+DISCORD_BOT_TOKEN=the-token-from-step-0
+DISCORD_BOT_DEV=false
+DISCORD_INTERACTION_FOLDER=./handler
+```
+
+`DISCORD_BOT_DEV=false` gives you `/roll` and `/info`. With `true`, the bot uses `/roll_dev` and `/info_dev`
+instead (see [Setup](#setup)).
+
+### Step 2: Deploy the commands (once)
+
+```bash
+npm install
+npx dim
+```
+
+**Manage Interactions** → **Command Manager** → **Global** → deploy `roll` and `info`.
+See [Deploying the commands](#deploying-the-commands) for details.
+
+### Step 3: Start the bot
+
+```bash
+docker compose up -d --build
+```
+
+That's it: try `/roll dice:1d20+5` or `/info` on Discord. The container restarts on its own when it crashes
+and when Docker starts; to start Docker with the machine, see [With Docker](#with-docker-starts-with-the-machine).
+
 ## Usage
 
 ```
