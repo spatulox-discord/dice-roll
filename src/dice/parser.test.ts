@@ -121,7 +121,7 @@ describe("parseFormula", () => {
         // 13 terms of "d2kh1" fit in 80 characters, but "1d2kh1" each does not
         const input = Array.from({length: 13}, () => "d2kh1").join("+");
         assert.ok(input.length <= LIMITS.formulaLength);
-        assert.throws(() => parseFormula(input), DiceParseError);
+        assert.throws(() => parseFormula(input), /Written in full, the formula is too long : `1d2kh1\+/);
     });
 
     it("rejects more terms than allowed", () => {

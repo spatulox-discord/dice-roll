@@ -191,7 +191,7 @@ export function parseFormula(input: string): DiceFormula {
     // "d6kh1" becomes "1d6kh1" : the canonical form can be longer than the input
     const normalized = formatFormula(terms) + (target ? ` vs ${formatTarget(target)}` : '');
     if (normalized.length > LIMITS.formulaLength) {
-        throw new DiceParseError(`The formula is too long (${LIMITS.formulaLength} characters max).`);
+        throw new DiceParseError(`Written in full, the formula is too long : \`${normalized}\` (${LIMITS.formulaLength} characters max).`);
     }
 
     return {terms, target, normalized};
