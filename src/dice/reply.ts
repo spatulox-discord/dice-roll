@@ -1,8 +1,7 @@
 import {RepliableInteraction} from "discord.js";
-import {RateLimiter} from "discord.js-rate-limiter";
 import {ComponentManager} from "@spatulox/simplediscordbot";
 import {Time} from "@spatulox/utils";
-import {isUserRateLimited} from "../utils/rateLimiter";
+import {isUserRateLimited, RateLimiter} from "../utils/rateLimiter";
 import {DiceFormula, DiceParseError, parseFormula} from "./parser";
 import {rollFormula} from "./roller";
 import {buildErrorContainer, buildRollContainer} from "./format";
@@ -20,7 +19,7 @@ export async function replyWithRoll(
     input: string,
     isPrivate: boolean
 ): Promise<void> {
-    if (await isUserRateLimited(interaction, rateLimiter, RATE_LIMIT.windowMs)) {
+    if (await isUserRateLimited(interaction, rateLimiter)) {
         return
     }
 
