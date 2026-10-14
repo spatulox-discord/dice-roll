@@ -140,8 +140,8 @@ Filters
   a `mod` row for the modifiers, and a `total` row when there is more than one row.
 - Dice that do not count (dropped by `kh`/`kl`/`dh`/`dl`, or failed in a success count) are between parentheses.
 - For a success count, the sum column shows the number of successes (`[3]`). Under the table, outside the code block,
-  a line gives the **faces total** of all its dice and the **successes faces total**:
-  `` `4d6<=3` faces total: 11 · successes faces total: 6 ``.
+  two lines give the **faces total** of all its dice and the **successes faces total**:
+  `` `4d6<=3` faces total: 11 `` then `successes faces total: 6`.
 - Long rolls wrap over several lines. On huge rolls that do not fit in a Discord message, the rolls are replaced
   with `…` and the sums stay.
 - **`private`** makes a secret roll: only you see the result.
