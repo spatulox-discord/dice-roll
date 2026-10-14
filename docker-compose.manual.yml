@@ -1,0 +1,24 @@
+# Manual start : builds the image and creates the container WITHOUT starting it
+#   docker compose -f docker-compose.manual.yml create --build
+# Then start / stop it from Docker Desktop, or with "docker start dice-roll" / "docker stop dice-roll"
+#
+# Same service and container name as docker-compose.yml : switching from one file to the other
+# replaces the container, so the bot never runs twice with the same token
+services:
+  dice-roll:
+    build:
+      context: .
+      # Uses the host network while building : avoids DNS failures of the build container during "npm ci"
+      network: host
+    image: dice-roll:latest
+    container_name: dice-roll
+    env_file: .env
+    environment:
+      TZ: Europe/Paris
+    # Docker never starts the bot on its own (neither after a crash nor when Docker starts)
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

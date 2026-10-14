@@ -197,6 +197,19 @@ docker compose up -d --build # rebuild after a change
 docker compose down          # stop
 ```
 
+### With Docker (manual start)
+
+To start and stop the bot yourself (from Docker Desktop for instance), without Docker restarting it on its own:
+
+```bash
+docker compose -f docker-compose.manual.yml create --build
+```
+
+- Builds the image and creates the `dice-roll` container **without starting it** (`restart: "no"`).
+- Start / stop it with the ▶ / ■ buttons of Docker Desktop, or `docker start dice-roll` / `docker stop dice-roll`.
+- Both compose files use the same container: switching from one to the other replaces it, so the bot never runs
+  twice.
+
 ## Layout
 
 ```
@@ -219,5 +232,6 @@ src/
     buttons/reroll.ts       button handler (customId `dice_reroll|<p|s>|<formula>`)
   utils/                    HandlersPath, RegisterInteractions, RegisterModules, rateLimiter
 Dockerfile
-docker-compose.yml
+docker-compose.yml          auto-restart (starts with Docker)
+docker-compose.manual.yml   created only, started by hand
 ```
