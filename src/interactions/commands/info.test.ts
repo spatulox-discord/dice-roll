@@ -13,7 +13,7 @@ describe("buildInfoContainer", () => {
 
     it("explains every filter", () => {
         const text = containerTexts(buildInfoContainer()).join("\n");
-        for (const rule of ["kh", "kl", "dh", "dl"]) {
+        for (const rule of ["kh", "kl", "dh", "dl", "<=", ">="]) {
             assert.ok(text.includes(`\`${rule}\``), `${rule} is not explained`);
         }
     });

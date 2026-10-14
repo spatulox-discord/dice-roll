@@ -35,29 +35,39 @@ export function buildInfoContainer(): ContainerBuilder {
             ].join("\n")
         },
         {
-            name: "🎯 Filtering dice",
+            name: "🎯 Keeping the best or worst dice",
             value: [
-                "Put it right after a group of dice. The number that follows is a **face value**, not a number of dice:",
-                "`kh` *keep high*: keeps the dice ≥ value. `4d6kh3` keeps the 3s, 4s, 5s and 6s",
-                "`kl` *keep low*: keeps the dice ≤ value. `6d6kl3` on `[1] [5] [3] [3] [6] [2]` keeps `[1] [3] [3] [2]`",
-                "`dh` *drop high*: removes the dice ≥ value. `3d8dh7` removes the 7s and 8s",
-                "`dl` *drop low*: removes the dice ≤ value. `4d6dl2` removes the 1s and 2s",
-                "`k` + comparison (`<` `<=` `>` `>=` `=`): `5d6k<3`, `6d6k=6`",
-                "One filter per group. If no die matches, the group is worth 0"
+                "Right after a group of dice, followed by a **number of dice** (1 by default):",
+                "`kh` *keep highest*: `4d6kh3` keeps the 3 highest dice",
+                "`kl` *keep lowest*: `4d6kl3` keeps the 3 lowest dice",
+                "`dh` *drop highest*: `3d8dh1` drops the highest die",
+                "`dl` *drop lowest*: `4d6dl1` drops the lowest die",
+                "Advantage: `2d20kh1`, disadvantage: `2d20kl1`"
+            ].join("\n")
+        },
+        {
+            name: "✅ Counting successes",
+            value: [
+                "Right after a group of dice, a comparison (`<` `<=` `>` `>=` `=`) and a **face value**:",
+                "every die matching it is a success, and the group is worth the **number of successes**",
+                "`4d6<=3`: counts the dice showing 3 or less (roll under)",
+                "`6d10>=8`: counts the dice showing 8 or more (dice pools)",
+                "The total of the faces of the successes is shown too (`total = …`), modifiers add to the successes",
+                "One filter (keep or count) per group of dice"
             ].join("\n")
         },
         {
             name: "📊 Reading the result",
             value: [
-                "**Game mat**: the dice that count, one line per group of dice",
-                "**Dice total**, then the **modifiers** and the final **total**",
-                "With a filter: a mini mat shows every die rolled and the total without filter,",
-                `and the **${FILTER_FIELD_NAME}** section lists the dice kept (\`kh\`/\`kl\`/\`k…\`) or removed (\`dh\`/\`dl\`)`
+                "A table with the formula, one row per group of dice: the **rolls** and their **sum** (or successes)",
+                "A `mod` row for the modifiers, and a `total` row when there is more than one row",
+                "Dice that do not count (dropped, or failed) are between parentheses: `15 (7)`",
+                `The **${FILTER_FIELD_NAME}** section explains each filter of the roll`
             ].join("\n")
         },
         {
             name: "🔁 Reroll",
-            value: "The **🎲 Reroll** button, next to the total, rolls the same formula again for you, with the same visibility (public or secret)."
+            value: "The **🎲 Reroll** button, under the result, rolls the same formula again for you, with the same visibility (public or secret)."
         },
         {
             name: "⚠️ Limits",

@@ -81,8 +81,7 @@ See [With Docker (manual start)](#with-docker-manual-start) for details.
 /info
 ```
 
-`/info` shows (privately) how to use the bot: notation, face value filters (`kh3`, `kl3`, `dh3`, `dl3`, `k<3`…),
-how to read a result, and the limits.
+`/info` shows (privately) how to use the bot: notation, filters, how to read a result, and the limits.
 
 | Formula | Meaning |
 |---|---|
@@ -90,48 +89,50 @@ how to read a result, and the limits.
 | `d20` | same as `1d20` |
 | `3d6+1d4-2` | several terms, added or subtracted |
 | `d%` | one d100 |
-| `6d6kl3` | keeps the dice showing **3 or less** (*keep low*) |
-| `4d6kh3` | keeps the dice showing **3 or more** (*keep high*) |
-| `4d6dl2` | removes the dice showing **2 or less** (*drop low*) |
-| `3d8dh7` | removes the dice showing **7 or more** (*drop high*) |
-| `5d6k<3` | keeps the dice whose face is < 3 (also `<=`, `>`, `>=`, `=`) |
+| `2d20kh1` / `2d20kl1` | advantage / disadvantage: keeps the highest / lowest of two d20 |
+| `4d6kh3` | keeps the **3 highest** dice (*keep highest*), `kl` keeps the lowest |
+| `4d6dl1` | drops the **lowest** die (*drop lowest*), `dh` drops the highest |
+| `4d6<=3` | counts the dice showing **3 or less** as successes (roll under) |
+| `6d10>=8` | counts the dice showing **8 or more** as successes (dice pools) |
 
-Filters apply to the **face value** of each die, not to a number of dice: `6d6kl3` on
-`[1] [5] [3] [3] [6] [2]` keeps `[1] [3] [3] [2]`, the 4 dice showing 3 or less. The number of kept dice
-therefore changes from one roll to the next, and can be zero: the group is then worth 0. One filter per
-group of dice, and the value is required (`kh` alone is rejected).
+- After `kh` / `kl` / `dh` / `dl`, the number is a **number of dice** (1 by default: `2d20kh` = `2d20kh1`).
+- After a comparison (`<`, `<=`, `>`, `>=`, `=`), the number is a **face value**: the group is worth the
+  **number of successes**, and the total of their faces is shown too. Modifiers add to the successes
+  (`6d10>=8+1`). If no die succeeds, the group is worth 0.
+- One filter (keep or count) per group of dice.
 
-The result is a **Components V2** message: a header with the formula and the avatar of whoever rolled, then
-the **game mat** (the dice that count, one line per term), then the dice total, the modifiers and the final
-total, with the **🎲 Reroll** button next to it. When a group of dice has a filter, a mini mat below shows
-every die rolled and the total without filter:
+The result is a **Components V2** message: who rolled, a table of the roll, the **Filters** section when the
+roll has a filter, and the **🎲 Reroll** button. For `2d20kh1+1d4+3`:
 
 ````
-### 🎲 2d20kh10+1d4+3                         [avatar]
--# Rolled by Spatulox
-─────────────────────────
+-# 🎲 Rolled by Spatulox
 ```
-2d20kh10  [15]
-+1d4      [ 3]
+╔══════════════════════╗
+║    2d20kh1+1d4+3     ║
+╠══════╤════════╤══════╣
+║ dice │ rolls  │ sum  ║
+╟──────┼────────┼──────╢
+║ 2d20 │ 15 (7) │ [15] ║
+║ +1d4 │ 3      │ [3]  ║
+║ mod  │        │  +3  ║
+╟──────┴────────┼──────╢
+║ total         │ [21] ║
+╚═══════════════╧══════╝
 ```
-Dice total: 18
-Modifiers: +3
-# Total: 21                                 [🎲 Reroll]
-─────────────────────────
--# All dice, no filter:
--# 2d20  [15] [ 7]
--# +1d4  [ 3]
--# Total without filter: 28
-─────────────────────────
-Dice matching filter
-2d20kh10 keeps dice ≥ 10 → [15]
+Filters
+`2d20kh1` keeps the highest die
+-# (n) = not counted
+[🎲 Reroll]
 ````
 
-The **Dice matching filter** section explains each filter and lists the dice it targets: the dice kept by
-`kh` / `kl` / `k…`, the dice removed by `dh` / `dl`.
-
+- One row per group of dice: its rolls and its sum. A `dice` column is added when there are several groups,
+  a `mod` row for the modifiers, and a `total` row when there is more than one row.
+- Dice that do not count (dropped by `kh`/`kl`/`dh`/`dl`, or failed in a success count) are between parentheses.
+- For a success count, the sum column shows the number of successes and the total of their faces: `[3] total = 6`.
+- Long rolls wrap over several lines. On huge rolls that do not fit in a Discord message, the rolls are replaced
+  with `…` and the sums stay.
 - **`private`** makes a secret roll: only you see the result.
-- The **🎲 Reroll** button, next to the total, rolls the same formula again for whoever clicks it, with the same visibility.
+- The **🎲 Reroll** button rolls the same formula again for whoever clicks it, with the same visibility.
 - Limits: 80 characters, 100 dice per term, 200 dice in total, 2 to 1000 sides, 20 terms.
   Each user can roll 5 times every 10 seconds.
 
@@ -232,7 +233,7 @@ src/
   dice/
     parser.ts               formula → terms (+ limits and errors)
     roller.ts               rolls (crypto.randomInt), filters
-    format.ts               result message in Components V2 (game mat) + "Reroll" button
+    format.ts               result message in Components V2 (table of the roll) + "Reroll" button
     reply.ts                parse + roll + reply (shared by /roll and the button)
     *.test.ts               tests
   test/components.ts        test helpers for Components V2
