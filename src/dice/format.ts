@@ -191,34 +191,53 @@ export function buildTargetText(result: RollResult): string | null {
 
 /**
  * For each term counting successes, under the table : the total of all its faces and the total of the faces
- * of its successes, as a "## Total:" heading and a list. The heading names the term when several terms count successes.
+ * of its successes, as a "## Total:" heading and a list. The heading names the term when several terms count successes,
+ * and numbers identical terms in the order of the table.
  * Null without success count.
  */
 export function buildFacesTotalsText(result: RollResult): string | null {
     const successTerms = result.terms.filter(isDiceTerm).filter(({term}) => term.filter?.type === 'success');
-    const blocks = successTerms.map(({term, dice, faceTotal}) => [
-        successTerms.length > 1 ? `## Total \`${signedTerm(term)}\`:` : "## Total:",
-        `- faces: **${sumOf(dice.map(die => die.value))}**`,
-        `- successes faces: **${faceTotal}**`
-    ].join("\n"));
+    const labels = successTerms.map(({term}) => signedTerm(term));
+    const occurrences = new Map<string, number>();
+
+    const blocks = successTerms.map(({dice, faceTotal}, index) => {
+        const label = labels[index]!;
+        const occurrence = (occurrences.get(label) ?? 0) + 1;
+        occurrences.set(label, occurrence);
+        const number = labels.filter(other => other === label).length > 1 ? ` (${occurrence})` : "";
+
+        return [
+            successTerms.length > 1 ? `## Total \`${label}\`${number}:` : "## Total:",
+            `- faces: **${sumOf(dice.map(die => die.value))}**`,
+            `- successes faces: **${faceTotal}**`
+        ].join("\n");
+    });
     return blocks.length > 0 ? blocks.join("\n") : null;
 }
 
 /**
  * One line per term with a filter, in words, then the legend of the parentheses.
+ * Identical terms share one line, with the successes of each : "2 + 2 successes".
  * Null when no term has a filter.
  */
 export function buildFiltersText(result: RollResult): string | null {
-    const lines = result.terms.filter(isDiceTerm).flatMap(({term, subtotal}) => {
+    const groups = new Map<string, {countsSuccesses: boolean, successes: number[]}>();
+    for (const {term, subtotal} of result.terms.filter(isDiceTerm)) {
         if (!term.filter) {
-            return [];
+            continue;
         }
         const description = `\`${signedTerm(term)}\` ${describeFilter(term.filter)}`;
-        if (term.filter.type !== 'success') {
-            return [description];
+        const group = groups.get(description) ?? {countsSuccesses: term.filter.type === 'success', successes: []};
+        group.successes.push(Math.abs(subtotal));
+        groups.set(description, group);
+    }
+
+    const lines = [...groups].map(([description, {countsSuccesses, successes}]) => {
+        if (!countsSuccesses) {
+            return description;
         }
-        const successes = Math.abs(subtotal);
-        return [`${description}: ${successes} success${successes === 1 ? "" : "es"}`];
+        const plural = successes.length === 1 && successes[0] === 1 ? "" : "es";
+        return `${description}: ${successes.join(" + ")} success${plural}`;
     });
 
     return lines.length > 0 ? [...lines, FILTER_LEGEND].join("\n") : null;

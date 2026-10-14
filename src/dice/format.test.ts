@@ -153,6 +153,23 @@ describe("buildFiltersText", () => {
         assert.match(buildFiltersText(rollWith("2d6=6", [6, 1]))!, /: 1 success$/m);
     });
 
+    it("numbers the totals of identical terms and merges their filters", () => {
+        const result = rollWith("3d6>=4+3d6>=4+2d20kh1+2d20kh1", [1, 4, 6, 5, 6, 1, 3, 9, 2, 8]);
+        assert.equal(buildFacesTotalsText(result), [
+            "## Total `3d6>=4` (1):", "- faces: **11**", "- successes faces: **10**",
+            "## Total `3d6>=4` (2):", "- faces: **12**", "- successes faces: **11**"
+        ].join("\n"));
+        assert.equal(buildFiltersText(result), [
+            "`3d6>=4` counts dice ≥ 4 as successes: 2 + 2 successes",
+            "`2d20kh1` keeps the highest die",
+            "-# (n) = not counted"
+        ].join("\n"));
+    });
+
+    it("does not number distinct terms", () => {
+        assert.match(buildFacesTotalsText(rollWith("3d6>=4+3d6>=5", [4, 4, 4, 5, 5, 5]))!, /^## Total `3d6>=4`:\n(.*\n){2}## Total `3d6>=5`:/);
+    });
+
     it("shows the sign of a subtracted term", () => {
         const result = rollWith("3d6>=4-3d6>=4", [5, 5, 5, 5, 5, 5]);
         assert.match(buildFiltersText(result)!, /^`3d6>=4` .*\n`-3d6>=4` /);
