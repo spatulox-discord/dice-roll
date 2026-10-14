@@ -29,41 +29,56 @@ describe("rollFormula", () => {
         assert.equal(roll("1d20-1d4-2", 10, 3).total, 5);
     });
 
-    it("kl keeps every die showing the value or less (6d6kl3)", () => {
-        const result = roll("6d6kl3", 1, 5, 3, 3, 6, 2);
-        assert.deepEqual(result.terms[0]!.dice.filter(die => die.kept).map(die => die.value), [1, 3, 3, 2]);
-        assert.equal(result.total, 9);
+    it("keeps the highest dice (4d6kh3)", () => {
+        const result = roll("4d6kh3", 2, 6, 1, 5);
+        assert.equal(result.total, 13);
+        assert.deepEqual(result.terms[0]!.dice.map(die => die.kept), [true, true, false, true]);
     });
 
-    it("kh keeps every die showing the value or more (4d6kh3)", () => {
-        const result = roll("4d6kh3", 2, 6, 1, 3);
-        assert.deepEqual(result.terms[0]!.dice.map(die => die.kept), [false, true, false, true]);
-        assert.equal(result.total, 9);
+    it("rolls with advantage / disadvantage (2d20kh1 / 2d20kl1)", () => {
+        assert.equal(roll("2d20kh1+5", 7, 15).total, 20);
+        assert.equal(roll("2d20kl1+5", 7, 15).total, 12);
     });
 
-    it("dl / dh remove every die showing the value or less / more", () => {
-        assert.equal(roll("4d6dl2", 3, 1, 2, 6).total, 9);
-        assert.equal(roll("3d8dh5", 8, 2, 5).total, 2);
+    it("drops the lowest / highest dice", () => {
+        assert.equal(roll("4d6dl1", 3, 1, 4, 6).total, 13);
+        assert.equal(roll("3d8dh1", 8, 2, 5).total, 7);
     });
 
-    it("keeps the dice matching a face value filter", () => {
-        const result = roll("5d6k<=3", 6, 4, 5, 1, 3);
-        assert.equal(result.total, 4);
-        assert.deepEqual(result.terms[0]!.dice.map(die => die.kept), [false, false, false, true, true]);
-        assert.equal(roll("6d6k>=5", 5, 2, 6, 6, 1, 4).total, 17);
-        assert.equal(roll("4d6k<3", 1, 2, 3, 2).total, 5);
-        assert.equal(roll("4d6k>3", 1, 2, 3, 4).total, 4);
-        assert.equal(roll("3d6k=6", 6, 2, 6).total, 12);
+    it("breaks ties by roll order", () => {
+        assert.deepEqual([...keptIndexes([5, 5, 5], {type: 'keep', mode: 'kh', count: 2})], [0, 1]);
+        assert.deepEqual([...keptIndexes([5, 5, 5], {type: 'keep', mode: 'kl', count: 1})], [0]);
     });
 
-    it("totals 0 when a face value filter matches no die", () => {
-        const result = roll("2d6k>4+1", 1, 2);
+    it("counts the successes, with the total of their faces", () => {
+        const result = roll("4d6<=3", 1, 5, 3, 2);
+        assert.equal(result.total, 3);
+        assert.equal(result.terms[0]!.faceTotal, 6);
+        assert.deepEqual(result.terms[0]!.dice.map(die => die.kept), [true, false, true, true]);
+
+        assert.equal(roll("6d10>=8", 9, 3, 8, 1, 10, 7).total, 3);
+        assert.equal(roll("3d6=6", 6, 2, 6).total, 2);
+    });
+
+    it("adds the modifiers to the number of successes", () => {
+        assert.equal(roll("6d10>=8+1", 9, 3, 8, 1, 10, 7).total, 4);
+        assert.equal(roll("4d6<=3-4d6<=3", 1, 2, 6, 6, 1, 6, 6, 6).total, 1);
+    });
+
+    it("compares the total with the vs target", () => {
+        assert.equal(roll("2d6+3 vs 8", 4, 4).success, true);
+        assert.equal(roll("2d6+3 vs 8", 1, 2).success, false);
+        assert.equal(roll("2d6+2 vs 8", 3, 3).success, true, "a total equal to the target succeeds with >=");
+        assert.equal(roll("1d100 vs <=45", 46).success, false);
+        assert.equal(roll("6d10>=8 vs 3", 9, 3, 8, 1, 10, 7).success, true);
+        assert.equal(roll("2d6", 1, 2).success, null);
+    });
+
+    it("is worth 0 when no die succeeds", () => {
+        const result = roll("2d6>4+1", 1, 2);
         assert.equal(result.total, 1);
+        assert.equal(result.terms[0]!.faceTotal, 0);
         assert.ok(result.terms[0]!.dice.every(die => !die.kept));
-    });
-
-    it("keeps every die of equal value", () => {
-        assert.deepEqual([...keptIndexes([5, 5, 2], {mode: 'kh', operator: '>=', value: 5})], [0, 1]);
     });
 
     it("stays within bounds with the crypto rng", () => {

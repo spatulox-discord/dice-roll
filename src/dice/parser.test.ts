@@ -6,7 +6,7 @@ describe("parseFormula", () => {
     it("parses a simple dice term with a modifier", () => {
         const formula = parseFormula("2d20+3");
         assert.deepEqual(formula.terms, [
-            {kind: 'dice', sign: 1, count: 2, sides: 20, keep: null},
+            {kind: 'dice', sign: 1, count: 2, sides: 20, filter: null},
             {kind: 'constant', sign: 1, value: 3}
         ]);
         assert.equal(formula.normalized, "2d20+3");
@@ -26,23 +26,45 @@ describe("parseFormula", () => {
         assert.equal(formula.terms[1]!.sign, -1);
     });
 
-    it("parses kh / kl / dh / dl as face value comparisons", () => {
-        assert.deepEqual(parseFormula("6d6kl3").terms[0], {kind: 'dice', sign: 1, count: 6, sides: 6, keep: {mode: 'kl', operator: '<=', value: 3}});
-        assert.deepEqual(parseFormula("4d6kh3").terms[0], {kind: 'dice', sign: 1, count: 4, sides: 6, keep: {mode: 'kh', operator: '>=', value: 3}});
+    it("parses kh / kl / dh / dl as a number of dice, 1 by default", () => {
+        assert.deepEqual(parseFormula("4d6kh3").terms[0], {kind: 'dice', sign: 1, count: 4, sides: 6, filter: {type: 'keep', mode: 'kh', count: 3}});
+        assert.deepEqual(parseFormula("2d20kl").terms[0], {kind: 'dice', sign: 1, count: 2, sides: 20, filter: {type: 'keep', mode: 'kl', count: 1}});
+        assert.equal(parseFormula("2d20kh").normalized, "2d20kh1");
         assert.equal(parseFormula("4d6dl1").normalized, "4d6dl1");
-        assert.equal(parseFormula("3d8dh5").normalized, "3d8dh5");
+        assert.equal(parseFormula("3d8dh").normalized, "3d8dh1");
     });
 
-    it("accepts a value above the number of dice (it is a face value, not a count)", () => {
-        assert.equal(parseFormula("2d20kh15").normalized, "2d20kh15");
-    });
-
-    it("parses face value filters", () => {
-        assert.deepEqual(parseFormula("5d6k<=3").terms[0], {kind: 'dice', sign: 1, count: 5, sides: 6, keep: {mode: 'k', operator: '<=', value: 3}});
+    it("parses a comparison as a success count", () => {
+        assert.deepEqual(parseFormula("4d6<=3").terms[0], {kind: 'dice', sign: 1, count: 4, sides: 6, filter: {type: 'success', operator: '<=', value: 3}});
         for (const operator of ["<", "<=", ">", ">=", "="]) {
-            assert.equal(parseFormula(`4d6 k${operator} 3`).normalized, `4d6k${operator}3`);
+            assert.equal(parseFormula(`4d6 ${operator} 3`).normalized, `4d6${operator}3`);
         }
-        assert.equal(parseFormula("6d6k>=5+2").normalized, "6d6k>=5+2");
+        assert.equal(parseFormula("6d10>=8+1").normalized, "6d10>=8+1");
+    });
+
+    it("parses a vs target on the total, >= by default", () => {
+        const formula = parseFormula("2d6+3 vs 8");
+        assert.deepEqual(formula.target, {operator: '>=', value: 8});
+        assert.equal(formula.normalized, "2d6+3 vs 8");
+        assert.equal(parseFormula("2d6+3VS8").normalized, "2d6+3 vs 8");
+        assert.equal(parseFormula("2d6 vs >=8").normalized, "2d6 vs 8");
+    });
+
+    it("parses every comparison and negative targets", () => {
+        for (const operator of ["<", "<=", ">", "="]) {
+            assert.equal(parseFormula(`1d100 vs ${operator} 45`).normalized, `1d100 vs ${operator}45`);
+        }
+        assert.deepEqual(parseFormula("1d4-5 vs -2").target, {operator: '>=', value: -2});
+    });
+
+    it("combines a success count with a target", () => {
+        const formula = parseFormula("6d10>=8 vs 3");
+        assert.deepEqual(formula.terms[0], {kind: 'dice', sign: 1, count: 6, sides: 10, filter: {type: 'success', operator: '>=', value: 8}});
+        assert.deepEqual(formula.target, {operator: '>=', value: 3});
+    });
+
+    it("has no target without vs", () => {
+        assert.equal(parseFormula("2d6").target, null);
     });
 
     const invalid: [string, string][] = [
@@ -60,17 +82,23 @@ describe("parseFormula", () => {
         [`1d${LIMITS.maxSides + 1}`, "too many sides"],
         [`${LIMITS.dicePerTerm + 1}d6`, "too many dice in a term"],
         ["100d6+100d6+1d6", "too many dice in total"],
-        ["2d20kh", "kh without a value"],
-        ["4d6kh7", "kh above every face"],
-        ["4d6kl0", "kl below every face"],
-        ["4d6dl6", "dl removing every face"],
-        ["4d6dh1", "dh removing every face"],
+        ["2d20kh3", "keeping more dice than rolled"],
+        ["2d20kh0", "keeping zero dice"],
+        ["2d20dl2", "dropping every die"],
         ["4d6k3", "unknown keep rule"],
-        ["4d6k<", "face value filter without a value"],
-        ["4d6k=>3", "unknown comparison operator"],
-        ["4d6k>6", "face value filter no face can match"],
-        ["4d6k<1", "face value filter below every face"],
-        ["4d6kh2k<3", "two filters on one term"],
+        ["4d6k<=3", "the removed k<op> notation"],
+        ["4d6<", "comparison without a value"],
+        ["4d6=>3", "unknown comparison operator"],
+        ["4d6>6", "comparison no face can match"],
+        ["4d6<1", "comparison below every face"],
+        ["4d6kh2<3", "two filters on one term"],
+        ["vs 8", "a target without dice"],
+        ["2d6 vs", "vs without a value"],
+        ["2d6 vs abc", "vs with garbage"],
+        ["2d6 vs 8 vs 9", "two targets"],
+        ["2d6 vs 8+1", "a term after the target"],
+        ["2d6 vs => 8", "unknown target comparison"],
+        ["2d6 vs 2000000", "target too big"],
         [`1d20+${LIMITS.maxConstant + 1}`, "constant too big"],
         ["1d6".padEnd(LIMITS.formulaLength + 1, "1"), "formula too long"]
     ];

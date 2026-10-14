@@ -13,7 +13,6 @@ import {RegisterModules} from "./utils/RegisterModules";
 
 async function main() {
     const config: BotConfig = {
-        botName: "Dice Roll",
         log: {
             info: {channelId: CHANNELS.log, console: true, discord: false},
             error: {channelId: CHANNELS.error, console: true, discord: false},

@@ -38,5 +38,5 @@ export async function replyWithRoll(
     const result = rollFormula(formula)
     const container = buildRollContainer(result, interaction.user, isPrivate)
 
-    await interaction.reply(ComponentManager.toInteraction(container, null, true, isPrivate))
+    await interaction.reply(ComponentManager.toInteraction(container, null, false, isPrivate))
 }

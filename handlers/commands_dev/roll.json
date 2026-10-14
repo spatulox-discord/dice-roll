@@ -1,7 +1,7 @@
 {
   "name": "roll_dev",
   "type": 1,
-  "description": "Roll dice (e.g. 2d20+3, 6d6kl3, 5d6k<3, d%)",
+  "description": "Roll dice (e.g. 2d20+3, 2d20kh1, 4d6<=3, d%)",
   "integration_types": [
     0,
     1
@@ -16,7 +16,7 @@
     {
       "type": 3,
       "name": "dice",
-      "description": "The formula to roll, e.g. 1d20+5, 6d6kl3 (keeps dice ≤ 3), 3d6+1d4-2",
+      "description": "The formula to roll, e.g. 1d20+5, 2d20kh1 (advantage), 4d6<=3 (successes), 2d6+3 vs 8",
       "required": true,
       "max_length": 80
     },
