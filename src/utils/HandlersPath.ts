@@ -8,13 +8,13 @@ const HANDLERS_DIR = path.resolve(__dirname, "../../handlers");
  * Every handler json file available under handlers/<category>/.
  * Add an entry here when you add a new json file, otherwise load() throws.
  */
-const HANDLERS_PATHS: Record<HandlerCategory, readonly string[]> = {
+const HANDLERS_PATHS = {
     commands: [
         'roll',
         'info'
     ],
     context_menu: []
-} as const;
+} as const satisfies Record<HandlerCategory, readonly string[]>;
 
 type HandlerKey = UnionFromArray<ConcatArrays<typeof HANDLERS_PATHS>>;
 
@@ -38,7 +38,7 @@ export class Handlers {
     }
 
     private static handlerExists(category: HandlerCategory, handler: string): boolean {
-        return HANDLERS_PATHS[category].includes(handler);
+        return (HANDLERS_PATHS[category] as readonly string[]).includes(handler);
     }
 
     /**
