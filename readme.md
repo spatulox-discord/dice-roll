@@ -64,6 +64,16 @@ docker compose up -d --build
 That's it: try `/roll dice:1d20+5` or `/info` on Discord. The container restarts on its own when it crashes
 and when Docker starts; to start Docker with the machine, see [With Docker](#with-docker-starts-with-the-machine).
 
+Prefer to start and stop the bot yourself (from Docker Desktop for instance)? Use the manual compose file instead:
+it only creates the container, without starting it, and Docker never restarts it on its own:
+
+```bash
+docker compose -f docker-compose.manual.yml create --build
+docker start dice-roll
+```
+
+See [With Docker (manual start)](#with-docker-manual-start) for details.
+
 ## Usage
 
 ```
