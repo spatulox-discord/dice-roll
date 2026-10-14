@@ -37,5 +37,9 @@ export async function replyWithRoll(
     const result = rollFormula(formula)
     const container = buildRollContainer(result, interaction.user, isPrivate)
 
-    await interaction.reply(ComponentManager.toInteraction(container, null, false, isPrivate))
+    await interaction.reply({
+        ...ComponentManager.toInteraction(container, null, false, isPrivate),
+        // The display name of the user is in the message : never let it ping anyone
+        allowedMentions: {parse: []}
+    })
 }
