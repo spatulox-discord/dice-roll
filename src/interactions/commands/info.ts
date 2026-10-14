@@ -19,7 +19,7 @@ export async function info(interaction: ChatInputCommandInteraction) {
 export function buildInfoContainer(): ContainerBuilder {
     const container = ComponentManager.create({
         title: "## 🎲 Dice Roll: how to use",
-        description: "Roll dice with `/roll formula:<formula>`. Add `private:True` for a secret roll that only you can see.",
+        description: "Roll dice with `/roll dice:<formula>`. Add `private:True` for a secret roll that only you can see.",
         separator: SeparatorSpacingSize.Small
     })
 

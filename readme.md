@@ -14,7 +14,7 @@ Discord dice roller bot, built on
 ## Usage
 
 ```
-/roll formula:<formula> [private:<True|False>]
+/roll dice:<formula> [private:<True|False>]
 /info
 ```
 
