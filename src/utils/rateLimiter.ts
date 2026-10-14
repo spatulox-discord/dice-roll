@@ -5,8 +5,14 @@ import {MessageFlags, RepliableInteraction} from "discord.js"
  */
 export class RateLimiter {
     private readonly hits = new Map<string, number[]>()
+    private lastSweep = 0
 
     constructor(private readonly limit: number, private readonly windowMs: number) {
+    }
+
+    /** Number of users still remembered */
+    get size(): number {
+        return this.hits.size
     }
 
     /**
@@ -14,6 +20,7 @@ export class RateLimiter {
      * milliseconds they must wait when they are over the limit.
      */
     take(userId: string, now: number = Date.now()): number {
+        this.forgetIdleUsers(now)
         const recent = (this.hits.get(userId) ?? []).filter(time => now - time < this.windowMs)
 
         if (recent.length >= this.limit) {
@@ -23,6 +30,19 @@ export class RateLimiter {
         recent.push(now)
         this.hits.set(userId, recent)
         return 0
+    }
+
+    /** At most once per window : drops the users whose last action left the window */
+    private forgetIdleUsers(now: number): void {
+        if (now - this.lastSweep < this.windowMs) {
+            return
+        }
+        this.lastSweep = now
+        for (const [userId, times] of this.hits) {
+            if (now - times[times.length - 1]! >= this.windowMs) {
+                this.hits.delete(userId)
+            }
+        }
     }
 }
 

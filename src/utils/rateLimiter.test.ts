@@ -25,4 +25,14 @@ describe("RateLimiter", () => {
         limiter.take("a", 5_000);
         assert.equal(limiter.take("a", 10_000), 0);
     });
+
+    it("forgets the users whose actions all left the window", () => {
+        const limiter = new RateLimiter(5, 10_000);
+        limiter.take("a", 10_000);
+        limiter.take("b", 15_000);
+        assert.equal(limiter.size, 2);
+
+        limiter.take("c", 21_000);
+        assert.equal(limiter.size, 2, "a is forgotten, b is still in its window");
+    });
 });
