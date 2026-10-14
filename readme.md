@@ -44,10 +44,15 @@ DISCORD_BOT_TOKEN=the-token-from-step-0
 
 ```bash
 npm install
-npx dim
+npx dim web
 ```
 
-**Manage Interactions** → **Command Manager** → **Global** → deploy `roll` and `info`.
+The **web UI** of `dim` (preferred) opens in your browser: pick the **Global** scope, then deploy `roll` and `info`
+from the **To deploy** list.
+
+Prefer the terminal? `npx dim` starts the same tool as a CLI: **Manage Interactions** → **Command Manager** →
+**Global** → deploy `roll` and `info`.
+
 See [Deploying the commands](#deploying-the-commands) for details.
 
 ### Step 3: Start the bot
@@ -141,11 +146,16 @@ The bot only uses the `Guilds` intent: no privileged intent to enable in the por
 ## Deploying the commands
 
 ```bash
-npx dim
+npx dim web   # web UI (preferred)
+npx dim       # same tool, as a CLI
 ```
 
-**Manage Interactions** → **Command Manager** → **Global** → deploy `roll` and `info` (or `roll_dev` and `info_dev`
-when `DISCORD_BOT_DEV=true`). `dim` writes the id Discord assigned into the JSON file: commit it, updates rely on it.
+In the web UI, pick the **Global** scope and deploy `roll` and `info` from the **To deploy** list (or `roll_dev`
+and `info_dev` when `DISCORD_BOT_DEV=true`). After a change in a JSON file, the command shows up in the
+**To update** list. In the CLI: **Manage Interactions** → **Command Manager** → **Global**.
+
+`dim` writes the id Discord assigned into the JSON file: commit it, updates rely on it. The web UI is only
+served on `127.0.0.1`, and stops with the command (Ctrl+C).
 
 The commands are declared for both a server install **and** a user install (`integration_types: [0, 1]`). They can
 be used in servers, in DMs with the bot and in group DMs (`contexts: [0, 1, 2]`).
