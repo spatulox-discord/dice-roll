@@ -112,6 +112,11 @@ describe("parseFormula", () => {
         });
     }
 
+    it("explains why a drop rule is rejected", () => {
+        assert.throws(() => parseFormula("4d6dh0"), /drop at least 1 die/);
+        assert.throws(() => parseFormula("4d6dl4"), /cannot drop every die/);
+    });
+
     it("rejects a formula whose canonical form is too long", () => {
         // 13 terms of "d2kh1" fit in 80 characters, but "1d2kh1" each does not
         const input = Array.from({length: 13}, () => "d2kh1").join("+");

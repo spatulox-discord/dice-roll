@@ -166,7 +166,10 @@ export function parseFormula(input: string): DiceFormula {
             if (keeps && (keepCount < 1 || keepCount > count)) {
                 throw new DiceParseError(`\`${match[0]}\`: you can keep between 1 and ${count} dice.`);
             }
-            if (!keeps && (keepCount < 1 || keepCount >= count)) {
+            if (!keeps && keepCount < 1) {
+                throw new DiceParseError(`\`${match[0]}\`: drop at least 1 die.`);
+            }
+            if (!keeps && keepCount >= count) {
                 throw new DiceParseError(`\`${match[0]}\`: you cannot drop every die.`);
             }
             filter = {type: 'keep', mode: keepMode as KeepMode, count: keepCount};
