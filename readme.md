@@ -194,7 +194,7 @@ npm start       # build, then run dist/
 npm test        # parser, dice engine and message tests (node:test)
 ```
 
-> Always run from the repository root: `.env` and `handlers/` are resolved from the current directory.
+> Always run from the repository root: `.env` is resolved from the current directory (`handlers/` is found from `dist/`).
 
 ### With Docker (starts with the machine)
 

@@ -1,16 +1,20 @@
+import path from "node:path";
 import {BotEnv, FileManager} from "@spatulox/simplediscordbot";
+
+// dist/utils/ -> <repo>/handlers, whatever the directory the bot is started from
+const HANDLERS_DIR = path.resolve(__dirname, "../../handlers");
 
 /**
  * Every handler json file available under handlers/<category>/.
  * Add an entry here when you add a new json file, otherwise load() throws.
  */
-const HANDLERS_PATHS: Record<HandlerCategory, readonly string[]> = {
+const HANDLERS_PATHS = {
     commands: [
         'roll',
         'info'
     ],
     context_menu: []
-} as const;
+} as const satisfies Record<HandlerCategory, readonly string[]>;
 
 type HandlerKey = UnionFromArray<ConcatArrays<typeof HANDLERS_PATHS>>;
 
@@ -26,8 +30,6 @@ const jsonCache: Partial<Record<string, JsonData>> = {};
 
 /**
  * Loads handler json files dynamically, based on the "DISCORD_BOT_DEV" env var.
- * Paths are resolved from the current working directory : always run the bot
- * from the repository root.
  */
 export class Handlers {
 
@@ -36,7 +38,7 @@ export class Handlers {
     }
 
     private static handlerExists(category: HandlerCategory, handler: string): boolean {
-        return HANDLERS_PATHS[category].includes(handler);
+        return (HANDLERS_PATHS[category] as readonly string[]).includes(handler);
     }
 
     /**
@@ -54,14 +56,14 @@ export class Handlers {
             throw new Error(`Handler ${category}.${handler} not found in HANDLERS_PATHS var, plz update HANDLERS_PATHS`);
         }
 
-        const path = `./handlers/${category}${this.path}/${handler}.json`;
+        const filePath = path.join(HANDLERS_DIR, `${category}${this.path}`, `${handler}.json`);
 
-        try {
-            const data = await FileManager.readJsonFile(path)
-            jsonCache[cacheKey] = data;
-            return data;
-        } catch (error) {
-            throw new Error(`Failed to load ${path}: ${error}`);
+        // readJsonFile does not throw : it logs and returns false on a missing or invalid file
+        const data = await FileManager.readJsonFile(filePath)
+        if (!data || typeof data.name !== "string") {
+            throw new Error(`Failed to load ${filePath} : missing file or no "name" field`);
         }
+        jsonCache[cacheKey] = data;
+        return data;
     }
 }

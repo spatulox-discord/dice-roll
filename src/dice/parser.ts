@@ -85,6 +85,12 @@ const TARGET_REGEX = /^vs(<=|>=|<|>|=)?(-?\d+)$/;
 const TERM_REGEX = /([+-])?(?:(\d*)d(\d+|%)(?:(kh|kl|dh|dl)(\d*)|(<=|>=|<|>|=)(\d+))?|(\d+))/y;
 
 export function parseFormula(input: string): DiceFormula {
+    // Removing the spaces would silently merge "1d20 5" into "1d205"
+    const splitNumber = /\S*\d\s+\d\S*/.exec(input);
+    if (splitNumber) {
+        throw new DiceParseError(`A space separates two numbers in ${quote(splitNumber[0])} : add a \`+\` or a \`-\`, or remove the space.`);
+    }
+
     const compact = input.replace(/\s+/g, '').toLowerCase();
 
     if (!compact) {
@@ -111,7 +117,7 @@ export function parseFormula(input: string): DiceFormula {
         const match = TERM_REGEX.exec(formula);
 
         if (!match) {
-            throw new DiceParseError(`Invalid formula near \`${formula.slice(start)}\`. Example: \`2d20+3\`, \`4d6kh3\`.`);
+            throw new DiceParseError(`Invalid formula near ${quote(formula.slice(start))}. Example: \`2d20+3\`, \`4d6kh3\`.`);
         }
 
         const [, signChar, countStr, sidesStr, keepMode, keepCountStr, operator, operatorValue, constantStr] = match;
@@ -160,7 +166,10 @@ export function parseFormula(input: string): DiceFormula {
             if (keeps && (keepCount < 1 || keepCount > count)) {
                 throw new DiceParseError(`\`${match[0]}\`: you can keep between 1 and ${count} dice.`);
             }
-            if (!keeps && (keepCount < 1 || keepCount >= count)) {
+            if (!keeps && keepCount < 1) {
+                throw new DiceParseError(`\`${match[0]}\`: drop at least 1 die.`);
+            }
+            if (!keeps && keepCount >= count) {
                 throw new DiceParseError(`\`${match[0]}\`: you cannot drop every die.`);
             }
             filter = {type: 'keep', mode: keepMode as KeepMode, count: keepCount};
@@ -182,16 +191,21 @@ export function parseFormula(input: string): DiceFormula {
     // "d6kh1" becomes "1d6kh1" : the canonical form can be longer than the input
     const normalized = formatFormula(terms) + (target ? ` vs ${formatTarget(target)}` : '');
     if (normalized.length > LIMITS.formulaLength) {
-        throw new DiceParseError(`The formula is too long (${LIMITS.formulaLength} characters max).`);
+        throw new DiceParseError(`Written in full, the formula is too long : \`${normalized}\` (${LIMITS.formulaLength} characters max).`);
     }
 
     return {terms, target, normalized};
 }
 
+/** Raw user input as inline code : a backtick in it would close the code span */
+function quote(text: string): string {
+    return `\`${text.replaceAll('`', "'")}\``;
+}
+
 function parseTarget(text: string): Comparison {
     const match = TARGET_REGEX.exec(text);
     if (!match) {
-        throw new DiceParseError(`Invalid target \`${text}\`. Example: \`2d6+3 vs 8\`, \`1d100 vs <=45\`.`);
+        throw new DiceParseError(`Invalid target ${quote(text)}. Example: \`2d6+3 vs 8\`, \`1d100 vs <=45\`.`);
     }
     const value = parseInt(match[2]!, 10);
     if (Math.abs(value) > LIMITS.maxTarget) {

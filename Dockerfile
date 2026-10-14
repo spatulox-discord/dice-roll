@@ -19,7 +19,7 @@ COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --chown=node:node --from=build /app/dist ./dist
-# Read at runtime from the working directory (see src/utils/HandlersPath.ts)
+# Read at runtime next to dist/ (see src/utils/HandlersPath.ts)
 COPY --chown=node:node handlers ./handlers
 
 USER node

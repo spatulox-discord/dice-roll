@@ -1,4 +1,4 @@
-import {ButtonBuilder, ContainerBuilder, escapeMarkdown, User} from "discord.js";
+import {ButtonBuilder, ContainerBuilder, escapeMarkdown} from "discord.js";
 import {ButtonManager, ComponentManager, ComponentManagerField, SimpleColor} from "@spatulox/simplediscordbot";
 import {CompareOperator, DiceFilter, DiceTerm, formatTerm} from "./parser";
 import {RollResult, TermResult} from "./roller";
@@ -32,19 +32,21 @@ type DiceTermResult = TermResult & {term: DiceTerm};
  * - the "Filters" list, only when a term has a filter
  * - the "Reroll" button
  */
-export function buildRollContainer(result: RollResult, user: User, isPrivate: boolean): ContainerBuilder {
-    const rolledBy = `-# 🎲 Rolled by **${escapeMarkdown(user.displayName)}**`;
+export function buildRollContainer(result: RollResult, displayName: string, isPrivate: boolean): ContainerBuilder {
+    // Every die is listed in the table : on huge rolls, only the sums fit in Discord's text limit
+    const container = assembleRollContainer(result, displayName, isPrivate, false);
+    if (containerTextLength(container) <= TEXT_MAX_LENGTH) {
+        return container;
+    }
+    return assembleRollContainer(result, displayName, isPrivate, true);
+}
+
+function assembleRollContainer(result: RollResult, displayName: string, isPrivate: boolean, hideDice: boolean): ContainerBuilder {
+    const rolledBy = `-# 🎲 Rolled by **${escapeMarkdown(displayName)}**`;
     const facesTotals = buildFacesTotalsText(result);
     const outcome = buildTargetText(result);
     const filters = buildFiltersText(result);
-
-    // Every die is listed in the table : on huge rolls, only the sums fit in Discord's text limit
-    const fixedLength = rolledBy.length + (facesTotals?.length ?? 0) + (outcome?.length ?? 0)
-        + (filters ? FILTER_FIELD_NAME.length + 6 + filters.length : 0);
-    let table = codeBlock(buildRollTable(result));
-    if (fixedLength + table.length > TEXT_MAX_LENGTH) {
-        table = codeBlock(buildRollTable(result, true));
-    }
+    const table = codeBlock(buildRollTable(result, hideDice));
 
     const fields: ComponentManagerField[] = [{value: table, separator: false}];
     if (facesTotals) fields.push({value: facesTotals, separator: false});
@@ -53,6 +55,26 @@ export function buildRollContainer(result: RollResult, user: User, isPrivate: bo
     fields.push({button: [buildRerollButton(result.formula.normalized, isPrivate)]});
 
     return ComponentManager.fields(ComponentManager.create({description: rolledBy}), fields);
+}
+
+/** Every text displayed by a Components V2 container (Discord caps their sum at TEXT_MAX_LENGTH) */
+export function containerTexts(container: ContainerBuilder): string[] {
+    const texts: string[] = [];
+    const visit = (node: unknown) => {
+        if (Array.isArray(node)) {
+            node.forEach(visit);
+        } else if (node && typeof node === "object") {
+            const record = node as Record<string, unknown>;
+            if (typeof record.content === "string") texts.push(record.content);
+            Object.values(record).forEach(visit);
+        }
+    };
+    visit(container.toJSON());
+    return texts;
+}
+
+function containerTextLength(container: ContainerBuilder): number {
+    return containerTexts(container).reduce((sum, text) => sum + text.length, 0);
 }
 
 /** Ephemeral error answer (invalid formula, stale button...) */
@@ -169,34 +191,53 @@ export function buildTargetText(result: RollResult): string | null {
 
 /**
  * For each term counting successes, under the table : the total of all its faces and the total of the faces
- * of its successes, as a "## Total:" heading and a list. The heading names the term when several terms count successes.
+ * of its successes, as a "## Total:" heading and a list. The heading names the term when several terms count successes,
+ * and numbers identical terms in the order of the table.
  * Null without success count.
  */
 export function buildFacesTotalsText(result: RollResult): string | null {
     const successTerms = result.terms.filter(isDiceTerm).filter(({term}) => term.filter?.type === 'success');
-    const blocks = successTerms.map(({term, dice, faceTotal}) => [
-        successTerms.length > 1 ? `## Total \`${formatTerm(term)}\`:` : "## Total:",
-        `- faces: **${sumOf(dice.map(die => die.value))}**`,
-        `- successes faces: **${faceTotal}**`
-    ].join("\n"));
+    const labels = successTerms.map(({term}) => signedTerm(term));
+    const occurrences = new Map<string, number>();
+
+    const blocks = successTerms.map(({dice, faceTotal}, index) => {
+        const label = labels[index]!;
+        const occurrence = (occurrences.get(label) ?? 0) + 1;
+        occurrences.set(label, occurrence);
+        const number = labels.filter(other => other === label).length > 1 ? ` (${occurrence})` : "";
+
+        return [
+            successTerms.length > 1 ? `## Total \`${label}\`${number}:` : "## Total:",
+            `- faces: **${sumOf(dice.map(die => die.value))}**`,
+            `- successes faces: **${faceTotal}**`
+        ].join("\n");
+    });
     return blocks.length > 0 ? blocks.join("\n") : null;
 }
 
 /**
  * One line per term with a filter, in words, then the legend of the parentheses.
+ * Identical terms share one line, with the successes of each : "2 + 2 successes".
  * Null when no term has a filter.
  */
 export function buildFiltersText(result: RollResult): string | null {
-    const lines = result.terms.filter(isDiceTerm).flatMap(({term, subtotal}) => {
+    const groups = new Map<string, {countsSuccesses: boolean, successes: number[]}>();
+    for (const {term, subtotal} of result.terms.filter(isDiceTerm)) {
         if (!term.filter) {
-            return [];
+            continue;
         }
-        const description = `\`${formatTerm(term)}\` ${describeFilter(term.filter)}`;
-        if (term.filter.type !== 'success') {
-            return [description];
+        const description = `\`${signedTerm(term)}\` ${describeFilter(term.filter)}`;
+        const group = groups.get(description) ?? {countsSuccesses: term.filter.type === 'success', successes: []};
+        group.successes.push(Math.abs(subtotal));
+        groups.set(description, group);
+    }
+
+    const lines = [...groups].map(([description, {countsSuccesses, successes}]) => {
+        if (!countsSuccesses) {
+            return description;
         }
-        const successes = Math.abs(subtotal);
-        return [`${description}: ${successes} success${successes === 1 ? "" : "es"}`];
+        const plural = successes.length === 1 && successes[0] === 1 ? "" : "es";
+        return `${description}: ${successes.join(" + ")} success${plural}`;
     });
 
     return lines.length > 0 ? [...lines, FILTER_LEGEND].join("\n") : null;
@@ -221,6 +262,11 @@ function describeFilter(filter: DiceFilter): string {
 function sumColumnHeader(terms: DiceTermResult[]): string {
     const successes = terms.filter(term => term.term.filter?.type === 'success').length;
     return successes === 0 ? "sum" : successes === terms.length ? "successes" : "result";
+}
+
+/** "-3d6>=4" for a subtracted term, so it is not mistaken for an added one */
+function signedTerm(term: DiceTerm): string {
+    return `${term.sign === -1 ? "-" : ""}${formatTerm(term)}`;
 }
 
 function diceLabel({term}: DiceTermResult, index: number): string {

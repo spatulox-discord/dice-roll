@@ -74,6 +74,9 @@ describe("parseFormula", () => {
         ["2d", "no sides"],
         ["d", "lone d"],
         ["2d20 3d6", "missing operator"],
+        ["1d20 5", "a modifier without operator"],
+        ["1 0d6", "a space inside the dice count"],
+        ["1d20 vs 1 5", "a space inside the target"],
         ["2d20++3", "double operator"],
         ["1d20+", "trailing operator"],
         ["5", "no dice"],
@@ -109,11 +112,21 @@ describe("parseFormula", () => {
         });
     }
 
+    it("keeps the raw input of an error inside its code span", () => {
+        assert.throws(() => parseFormula("1d20+`@x`"), {message: /near `\+'@x'`\./});
+        assert.throws(() => parseFormula("1d20 vs `8"), {message: /target `vs'8`\./});
+    });
+
+    it("explains why a drop rule is rejected", () => {
+        assert.throws(() => parseFormula("4d6dh0"), /drop at least 1 die/);
+        assert.throws(() => parseFormula("4d6dl4"), /cannot drop every die/);
+    });
+
     it("rejects a formula whose canonical form is too long", () => {
         // 13 terms of "d2kh1" fit in 80 characters, but "1d2kh1" each does not
         const input = Array.from({length: 13}, () => "d2kh1").join("+");
         assert.ok(input.length <= LIMITS.formulaLength);
-        assert.throws(() => parseFormula(input), DiceParseError);
+        assert.throws(() => parseFormula(input), /Written in full, the formula is too long : `1d2kh1\+/);
     });
 
     it("rejects more terms than allowed", () => {

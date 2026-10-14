@@ -12,7 +12,7 @@ import {
     FILTER_FIELD_NAME,
     TEXT_MAX_LENGTH
 } from "./format";
-import {containerTexts, fakeUser} from "../test/components";
+import {containerTexts, fakeDisplayName} from "../test/components";
 
 function rollWith(input: string, values: number[]) {
     let index = 0;
@@ -152,11 +152,34 @@ describe("buildFiltersText", () => {
             "`4d6<=3` counts dice ≤ 3 as successes: 3 successes\n-# (n) = not counted");
         assert.match(buildFiltersText(rollWith("2d6=6", [6, 1]))!, /: 1 success$/m);
     });
+
+    it("numbers the totals of identical terms and merges their filters", () => {
+        const result = rollWith("3d6>=4+3d6>=4+2d20kh1+2d20kh1", [1, 4, 6, 5, 6, 1, 3, 9, 2, 8]);
+        assert.equal(buildFacesTotalsText(result), [
+            "## Total `3d6>=4` (1):", "- faces: **11**", "- successes faces: **10**",
+            "## Total `3d6>=4` (2):", "- faces: **12**", "- successes faces: **11**"
+        ].join("\n"));
+        assert.equal(buildFiltersText(result), [
+            "`3d6>=4` counts dice ≥ 4 as successes: 2 + 2 successes",
+            "`2d20kh1` keeps the highest die",
+            "-# (n) = not counted"
+        ].join("\n"));
+    });
+
+    it("does not number distinct terms", () => {
+        assert.match(buildFacesTotalsText(rollWith("3d6>=4+3d6>=5", [4, 4, 4, 5, 5, 5]))!, /^## Total `3d6>=4`:\n(.*\n){2}## Total `3d6>=5`:/);
+    });
+
+    it("shows the sign of a subtracted term", () => {
+        const result = rollWith("3d6>=4-3d6>=4", [5, 5, 5, 5, 5, 5]);
+        assert.match(buildFiltersText(result)!, /^`3d6>=4` .*\n`-3d6>=4` /);
+        assert.match(buildFacesTotalsText(result)!, /^## Total `3d6>=4`:\n(.*\n){2}## Total `-3d6>=4`:/);
+    });
 });
 
 describe("buildRollContainer", () => {
     function build(result: RollResult, isPrivate = false) {
-        const container = buildRollContainer(result, fakeUser, isPrivate);
+        const container = buildRollContainer(result, fakeDisplayName, isPrivate);
         return {json: JSON.stringify(container.toJSON()), texts: containerTexts(container), container};
     }
 
@@ -206,5 +229,14 @@ describe("buildRollContainer", () => {
 
         assert.ok(total <= TEXT_MAX_LENGTH, `${total} characters`);
         assert.doesNotMatch(texts.join("\n"), /│ … /, "no die is hidden");
+    });
+
+    it("hides the dice when the filters and a long escaped name push past Discord's text limit", () => {
+        // Found by fuzzing : 4002 characters when the filters header was under-estimated
+        const formula = "50d1000dh1+2d999dh1-1d100>=1-d100<=999+2d2=1-d999=1-99d%<=999";
+        const texts = containerTexts(buildRollContainer(rollFormula(parseFormula(formula), sides => sides), "_*".repeat(16), false));
+        const total = texts.reduce((sum, text) => sum + text.length, 0);
+
+        assert.ok(total <= TEXT_MAX_LENGTH, `${total} characters`);
     });
 });
