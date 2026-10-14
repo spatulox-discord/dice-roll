@@ -58,11 +58,6 @@ describe("buildRollDescription", () => {
         assert.match(description, /-1d6kh1  \[ 2\]/);
         assert.match(description, /Total des dés : \*\*8\*\*/);
     });
-
-    it("reports critical rolls", () => {
-        assert.match(describeRoll("1d20", 20), /Réussite critique/);
-        assert.match(describeRoll("2d20kl5", 20, 1), /Échec critique/);
-    });
 });
 
 describe("buildFilterField", () => {

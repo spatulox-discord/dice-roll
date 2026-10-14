@@ -66,20 +66,6 @@ describe("rollFormula", () => {
         assert.deepEqual([...keptIndexes([5, 5, 2], {mode: 'kh', operator: '>=', value: 5})], [0, 1]);
     });
 
-    it("detects natural 20 and natural 1 on a single d20", () => {
-        assert.equal(roll("1d20+5", 20).critical, 'success');
-        assert.equal(roll("1d20", 1).critical, 'failure');
-        assert.equal(roll("1d20", 12).critical, null);
-        assert.equal(roll("2d20kh15", 20, 3).critical, 'success');
-        assert.equal(roll("2d20kl5", 20, 1).critical, 'failure');
-    });
-
-    it("does not report criticals when the roll is not a single kept d20", () => {
-        assert.equal(roll("2d20", 20, 20).critical, null);
-        assert.equal(roll("1d20+1d4", 20, 4).critical, null);
-        assert.equal(roll("1d6", 1).critical, null);
-    });
-
     it("stays within bounds with the crypto rng", () => {
         for (let i = 0; i < 1000; i++) {
             const value = cryptoRng(6);

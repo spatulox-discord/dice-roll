@@ -50,8 +50,7 @@ export function buildInfoEmbed(): EmbedBuilder {
                 "**Tapis de jeu** : les dés qui comptent, une ligne par groupe de dés",
                 "**Total des dés**, puis les **modificateurs** et le **total** final",
                 "Avec un filtre : un mini tapis montre tous les dés lancés et le total sans filtre,",
-                `et le champ **${FILTER_FIELD_NAME}** liste les dés gardés (\`kh\`/\`kl\`/\`k…\`) ou retirés (\`dh\`/\`dl\`)`,
-                "Quand un seul d20 compte (`1d20+5`…) : 20 naturel = ✨ **réussite critique**, 1 naturel = 💀 **échec critique**"
+                `et le champ **${FILTER_FIELD_NAME}** liste les dés gardés (\`kh\`/\`kl\`/\`k…\`) ou retirés (\`dh\`/\`dl\`)`
             ].join("\n")
         },
         {

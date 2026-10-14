@@ -8,5 +8,5 @@ export const activities: RandomBotActivity = [
     {type: ActivityType.Playing, message: "aux dés 🎲"},
     {type: ActivityType.Watching, message: "les 20 naturels"},
     {type: ActivityType.Listening, message: "/roll 1d20"},
-    {type: ActivityType.Competing, message: "un concours de 1 critiques"}
+    {type: ActivityType.Competing, message: "un concours de lancers"}
 ];

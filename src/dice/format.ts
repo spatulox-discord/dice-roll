@@ -1,5 +1,5 @@
 import {ActionRowBuilder, ButtonBuilder, EmbedBuilder, User} from "discord.js";
-import {ButtonManager, EmbedManager, SimpleColor} from "@spatulox/simplediscordbot";
+import {ButtonManager, EmbedManager} from "@spatulox/simplediscordbot";
 import {CompareOperator, DiceTerm, formatTerm, KeepRule} from "./parser";
 import {RollResult, TermResult} from "./roller";
 
@@ -19,11 +19,7 @@ export type RerollPayload = {
 type DiceTermResult = TermResult & {term: DiceTerm};
 
 export function buildRollEmbed(result: RollResult, user: User): EmbedBuilder {
-    const color = result.critical === 'success' ? SimpleColor.green
-        : result.critical === 'failure' ? SimpleColor.red
-        : null;
-
-    const embed = EmbedManager.create(color)
+    const embed = EmbedManager.create()
         .setTitle(`🎲 ${result.formula.normalized}`)
         .setAuthor({name: user.displayName, iconURL: user.displayAvatarURL()})
         .setDescription(buildRollDescription(result));
@@ -90,8 +86,6 @@ export function buildRollDescription(result: RollResult): string {
     }
     lines.push(`# Total : ${result.total}`);
 
-    if (result.critical === 'success') lines.push("✨ **Réussite critique !**");
-    if (result.critical === 'failure') lines.push("💀 **Échec critique…**");
 
     const main = lines.join("\n");
 

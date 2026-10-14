@@ -64,7 +64,6 @@ pour `kh` / `kl` / `k…`, les dés retirés pour `dh` / `dl`.
 
 - **`prive`** fait un lancer secret : seul toi vois le résultat.
 - Le bouton **🎲 Relancer** relance la même formule pour celui qui clique, avec la même visibilité.
-- Quand il ne reste qu'un seul d20 compté (`1d20+5`, ou `2d20kh15` qui n'en garde qu'un), un 20 naturel est une **réussite critique** et un 1 naturel un **échec critique**.
 - Limites : 80 caractères, 100 dés par terme, 200 dés au total, de 2 à 1000 faces, 20 termes.
   Chaque utilisateur peut faire 5 lancers par tranche de 10 secondes.
 
@@ -147,7 +146,7 @@ src/
   client.ts                 client discord.js (intent Guilds)
   dice/
     parser.ts               formule → termes (+ limites et erreurs)
-    roller.ts               tirage (crypto.randomInt), garder/retirer, critiques
+    roller.ts               tirage (crypto.randomInt), filtres
     format.ts               embed du résultat (tapis de jeu) + bouton « Relancer »
     reply.ts                parse + tire + répond (partagé par /roll et le bouton)
     *.test.ts               tests
