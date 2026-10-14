@@ -1,6 +1,6 @@
 import {ButtonBuilder, ContainerBuilder, escapeMarkdown, SeparatorSpacingSize, User} from "discord.js";
 import {ButtonManager, ComponentManager, ComponentManagerField, SimpleColor} from "@spatulox/simplediscordbot";
-import {CompareOperator, DiceTerm, formatTerm, KeepRule} from "./parser";
+import {CompareOperator, DiceFilter, DiceTerm, formatTerm} from "./parser";
 import {RollResult, TermResult} from "./roller";
 
 export const REROLL_PREFIX = "dice_reroll";
@@ -100,7 +100,7 @@ export function buildTotalsText(result: RollResult): string {
  */
 export function buildMiniMatText(result: RollResult): string | null {
     const diceTerms = result.terms.filter(isDiceTerm);
-    if (!diceTerms.some(term => term.term.keep)) {
+    if (!diceTerms.some(term => term.term.filter)) {
         return null;
     }
 
@@ -121,14 +121,14 @@ export function buildMiniMatText(result: RollResult): string | null {
  */
 export function buildFilterField(result: RollResult): string | null {
     const lines = result.terms.filter(isDiceTerm).flatMap(({term, dice}) => {
-        if (!term.keep) {
+        if (!term.filter) {
             return [];
         }
-        const keeps = term.keep.mode !== 'dh' && term.keep.mode !== 'dl';
+        const keeps = term.filter.type === 'success' || term.filter.mode === 'kh' || term.filter.mode === 'kl';
         const matched = dice.filter(die => die.kept === keeps).map(die => `[${die.value}]`).join(" ");
         // A face value filter can match no die at all
         const shown = matched ? `\`${matched}\`` : "no dice";
-        return [`\`${formatTerm(term)}\` ${describeRule(term.keep)} → ${shown}`];
+        return [`\`${formatTerm(term)}\` ${describeRule(term.filter)} → ${shown}`];
     });
 
     return lines.length > 0 ? lines.join("\n") : null;
@@ -136,15 +136,15 @@ export function buildFilterField(result: RollResult): string | null {
 
 const OPERATOR_SYMBOLS: Record<CompareOperator, string> = {'<': "<", '<=': "≤", '>': ">", '>=': "≥", '=': "="};
 
-function describeRule({mode, operator, value}: KeepRule): string {
-    switch (mode) {
-        case 'dh':
-            return `removes dice ≥ ${value}`;
-        case 'dl':
-            return `removes dice ≤ ${value}`;
-        default:
-            return `keeps dice ${OPERATOR_SYMBOLS[operator]} ${value}`;
+function describeRule(filter: DiceFilter): string {
+    if (filter.type === 'success') {
+        return `counts dice ${OPERATOR_SYMBOLS[filter.operator]} ${filter.value} as successes`;
     }
+    const verb = filter.mode === 'kh' || filter.mode === 'kl' ? "keeps" : "drops";
+    const high = filter.mode === 'kh' || filter.mode === 'dh';
+    return filter.count === 1
+        ? `${verb} the ${high ? "highest" : "lowest"} die`
+        : `${verb} the ${filter.count} ${high ? "highest" : "lowest"} dice`;
 }
 
 /**

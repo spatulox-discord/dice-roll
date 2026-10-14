@@ -50,21 +50,21 @@ describe("game mat texts", () => {
         const description = describeRoll("4d6kh3+2", 2, 6, 1, 5);
         const [main, mini] = description.split("\n\n");
 
-        assert.match(main!, /4d6kh3  \[6\] \[5\]  = 11/);
-        assert.doesNotMatch(main!, /\[1\]|\[2\]/);
-        assert.match(main!, /# Total: 13/);
+        assert.match(main!, /4d6kh3  \[2\] \[6\] \[5\]  = 13/);
+        assert.doesNotMatch(main!, /\[1\]/);
+        assert.match(main!, /# Total: 15/);
 
         assert.match(mini!, /-# `4d6  \[2\] \[6\] \[1\] \[5\]`/);
         assert.match(mini!, /-# Total without filter: 16/);
     });
 
-    it("applies face value filters on the mat, even when no die matches", () => {
-        const description = describeRoll("5d6k<=3+1", 6, 4, 5, 1, 3);
-        assert.match(description, /5d6k<=3  \[1\] \[3\]  = 4/);
-        assert.match(description, /# Total: 5/);
+    it("counts successes, even when no die matches", () => {
+        const description = describeRoll("5d6<=3+1", 6, 4, 5, 1, 3);
+        assert.match(description, /5d6<=3  \[1\] \[3\]  = 4/);
+        assert.match(description, /# Total: 3/);
         assert.match(description, /-# `5d6  \[6\] \[4\] \[5\] \[1\] \[3\]`/);
 
-        assert.match(describeRoll("2d6k>4", 1, 2), /2d6k>4  no dice\n/);
+        assert.match(describeRoll("2d6>4", 1, 2), /2d6>4  no dice\n/);
     });
 
     it("keeps the sign of negative dice terms", () => {
@@ -80,27 +80,18 @@ describe("buildFilterField", () => {
     });
 
     it("lists the dice kept by kh / kl", () => {
-        assert.equal(buildFilterField(rollWith("6d6kl3", [1, 5, 3, 3, 6, 2])), "`6d6kl3` keeps dice ≤ 3 → `[1] [3] [3] [2]`");
-        assert.equal(buildFilterField(rollWith("4d6kh3", [2, 6, 1, 5])), "`4d6kh3` keeps dice ≥ 3 → `[6] [5]`");
+        assert.equal(buildFilterField(rollWith("4d6kh3", [2, 6, 1, 5])), "`4d6kh3` keeps the 3 highest dice → `[2] [6] [5]`");
+        assert.equal(buildFilterField(rollWith("2d20kl1", [15, 7])), "`2d20kl1` keeps the lowest die → `[7]`");
     });
 
     it("lists the dice removed by dh / dl", () => {
-        assert.equal(buildFilterField(rollWith("4d6dl2", [3, 1, 2, 6])), "`4d6dl2` removes dice ≤ 2 → `[1] [2]`");
-        assert.equal(buildFilterField(rollWith("5d8dh7", [8, 2, 5, 7, 1])), "`5d8dh7` removes dice ≥ 7 → `[8] [7]`");
+        assert.equal(buildFilterField(rollWith("4d6dl1", [3, 1, 4, 6])), "`4d6dl1` drops the lowest die → `[1]`");
+        assert.equal(buildFilterField(rollWith("5d8dh2", [8, 2, 5, 7, 1])), "`5d8dh2` drops the 2 highest dice → `[8] [7]`");
     });
 
-    it("describes face value filters", () => {
-        assert.equal(buildFilterField(rollWith("5d6k<=3", [6, 4, 5, 1, 3])), "`5d6k<=3` keeps dice ≤ 3 → `[1] [3]`");
-        assert.equal(buildFilterField(rollWith("6d6k>=5", [5, 2, 6, 6, 1, 4])), "`6d6k>=5` keeps dice ≥ 5 → `[5] [6] [6]`");
-        assert.equal(buildFilterField(rollWith("3d6k=6", [1, 2, 3])), "`3d6k=6` keeps dice = 6 → no dice");
-    });
-
-    it("has one line per filtered term", () => {
-        const field = buildFilterField(rollWith("2d20kh10+1d4+4d6dl1", [3, 18, 2, 5, 1, 4, 6]));
-        assert.deepEqual(field?.split("\n"), [
-            "`2d20kh10` keeps dice ≥ 10 → `[18]`",
-            "`4d6dl1` removes dice ≤ 1 → `[1]`"
-        ]);
+    it("lists the successes", () => {
+        assert.equal(buildFilterField(rollWith("4d6<=3", [1, 5, 3, 2])), "`4d6<=3` counts dice ≤ 3 as successes → `[1] [3] [2]`");
+        assert.equal(buildFilterField(rollWith("3d6=6", [1, 2, 3])), "`3d6=6` counts dice = 6 as successes → no dice");
     });
 });
 
@@ -135,11 +126,11 @@ describe("buildRollContainer", () => {
         const {texts} = build(rollWith("6d6kl3", [1, 5, 3, 3, 6, 2]));
         assert.ok(texts.some(text => text.startsWith("-# All dice, no filter")));
         assert.ok(texts.includes(`__**${FILTER_FIELD_NAME}**__`));
-        assert.ok(texts.includes("`6d6kl3` keeps dice ≤ 3 → `[1] [3] [3] [2]`"));
+        assert.ok(texts.includes("`6d6kl3` keeps the 3 lowest dice → `[1] [3] [2]`"));
     });
 
     it("stays under Discord's text limit on the biggest rolls", () => {
-        const formula = "100d1000k>=1+100d1000kl999";
+        const formula = "100d1000>=1+100d1000kl99";
         const values = Array.from({length: 200}, (_, index) => 100 + index);
         const {texts} = build(rollWith(formula, values));
         const total = texts.reduce((sum, text) => sum + text.length, 0);
