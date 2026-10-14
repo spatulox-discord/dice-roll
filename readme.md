@@ -23,8 +23,13 @@ Resources:
 1. **New Application**, give it a name.
 2. **Bot** tab → **Reset Token** → copy the token. Keep it secret: anyone with it controls your bot.
    No privileged intent is needed, leave them off.
-3. **Installation** tab → in the default install settings, add the `applications.commands` and `bot`
-   scopes, then open the install link to add the bot to your server (or to your account, for a user install).
+3. **Installation** tab → **Default Install Settings**:
+   - **Guild Install**: add the `applications.commands` **and** `bot` scopes. No permission is needed.
+   - **User Install**: `applications.commands` (the only scope available there).
+4. Open the **Install Link** and pick how to add the app:
+   - **Add to server**: the bot joins the server as a member (shown online when it runs) and the commands work there.
+   - **Add to my apps**: the commands follow you everywhere (servers, DMs), but no bot shows up in the member
+     list. That is expected: the commands still work, the bot just is not a member of the server.
 
 ### Step 1: Fill in the `.env`
 
